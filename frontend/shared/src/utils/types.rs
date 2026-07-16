@@ -25,7 +25,7 @@ pub struct CreateReportPayload {
     pub device_hash: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Waypoint {
     pub lat: f64,
     pub lng: f64,
@@ -34,6 +34,17 @@ pub struct Waypoint {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RouteScorePayload {
     pub waypoints: Vec<Waypoint>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DirectionsResponse {
+    pub destination_lat: f64,
+    pub destination_lng: f64,
+    pub waypoints: Vec<Waypoint>,
+    pub polyline: Vec<Waypoint>,
+    pub distance_m: f64,
+    pub duration_s: f64,
+    pub provider: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -64,6 +75,7 @@ pub struct EmergencyContact {
     pub device_hash: String,
     pub name: String,
     pub email: Option<String>,
+    pub phone: Option<String>,
     pub contact_device_hash: Option<String>,
     pub push_endpoint: Option<String>,
     pub push_p256dh: Option<String>,
@@ -77,6 +89,7 @@ pub struct AddContactPayload {
     pub device_hash: String,
     pub name: String,
     pub email: Option<String>,
+    pub phone: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

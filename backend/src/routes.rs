@@ -4,7 +4,7 @@ use axum::{
 };
 
 use crate::{
-    handlers::{health, reports, route_score, sos},
+    handlers::{directions, health, reports, route_score, sos},
     AppState,
 };
 
@@ -25,6 +25,7 @@ fn api_routes() -> Router<AppState> {
         .route("/reports/:id/upvote", post(reports::upvote_report))
         .route("/reports/:id/downvote", post(reports::downvote_report))
         // Route safety score
+        .route("/directions", get(directions::get_directions))
         .route("/route-score", post(route_score::calculate_route_score))
         // SOS & emergency contacts
         .route("/sos/trigger", post(sos::trigger_sos))

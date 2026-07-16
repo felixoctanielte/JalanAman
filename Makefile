@@ -1,6 +1,7 @@
 .PHONY: dev-infra dev-backend dev-web dev-android dev-ios dev-frontend up down logs db-migrate db-reset seed vapid-keys fmt check build-backend build-frontend build-android
 
-MOBILE_GRADLE_HOME := $(CURDIR)/frontend/mobile/target/gradle-home
+MOBILE_CACHE_DIR ?= $(HOME)/.cache/jalanaman
+MOBILE_GRADLE_HOME ?= $(MOBILE_CACHE_DIR)/gradle
 ANDROID_API ?= 23
 
 # ── Dev mode (infra only, run backend locally) ────────────────────────────────
@@ -12,11 +13,11 @@ dev-backend:
 
 # Build Tailwind lalu jalankan dx serve (web)
 dev-web:
-	cd frontend/web && npx tailwindcss -i assets/tailwind.css -o assets/tw.css && dx serve
+	bash frontend/web/serve-web-wsl.sh
 
-# Mobile: pastikan Android SDK + NDK sudah terpasang
+# Mobile Android via Linux/WSL SDK wrapper.
 dev-android:
-	cd frontend/mobile && GRADLE_USER_HOME=$(MOBILE_GRADLE_HOME) dx serve --platform android
+	cd frontend/mobile && JALANAMAN_CACHE_DIR=$(MOBILE_CACHE_DIR) GRADLE_USER_HOME=$(MOBILE_GRADLE_HOME) bash android/serve-android-wsl.sh
 
 dev-ios:
 	cd frontend/mobile && dx serve --platform ios
@@ -56,13 +57,13 @@ fmt:
 
 check:
 	cargo clippy --workspace -- -D warnings
-	cd frontend/mobile && CC_aarch64_linux_android="$${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android$(ANDROID_API)-clang" AR_aarch64_linux_android="$${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar" cargo check --target aarch64-linux-android
+	cd frontend/mobile && CARGO_TARGET_DIR=$(MOBILE_CACHE_DIR)/android-target CC_aarch64_linux_android="$${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android$(ANDROID_API)-clang" AR_aarch64_linux_android="$${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar" cargo check --target aarch64-linux-android
 
 build-backend:
 	cd backend && cargo build --release
 
 build-frontend:
-	cd frontend/web && npx tailwindcss -i assets/tailwind.css -o assets/tw.css --minify && dx build --release
+	cd frontend/web && npm run tailwind:build -- --minify && dx build --release
 
 build-android:
-	cd frontend/mobile && GRADLE_USER_HOME=$(MOBILE_GRADLE_HOME) dx build --platform android
+	cd frontend/mobile && JALANAMAN_CACHE_DIR=$(MOBILE_CACHE_DIR) GRADLE_USER_HOME=$(MOBILE_GRADLE_HOME) bash android/build-android-wsl.sh

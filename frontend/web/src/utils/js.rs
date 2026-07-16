@@ -1,8 +1,8 @@
 //! wasm_bindgen bindings to JS helpers defined in index.html.
-//! Leaflet is loaded from CDN synchronously — no async waiting needed.
+//! MapLibre is loaded from CDN synchronously — no async waiting needed.
 use wasm_bindgen::prelude::*;
 
-// ── Map (Leaflet) ─────────────────────────────────────────────────────────────
+// ── Map (MapLibre + OpenFreeMap) ──────────────────────────────────────────────
 
 #[wasm_bindgen]
 extern "C" {
@@ -23,16 +23,6 @@ extern "C" {
 
     #[wasm_bindgen(js_namespace = window, js_name = ja_panTo)]
     pub fn pan_to(lat: f64, lng: f64);
-}
-
-// ── Directions (OSRM + Nominatim – no API key) ────────────────────────────────
-
-#[wasm_bindgen]
-extern "C" {
-    /// Returns a Promise<string> resolving to JSON:
-    /// `{ waypoints: [{lat,lng}], polyline: [{lat,lng}] }`
-    #[wasm_bindgen(js_namespace = window, js_name = ja_getDirections)]
-    pub fn get_directions(origin: &str, destination: &str, mode: &str) -> js_sys::Promise;
 }
 
 // ── SOS alarm ─────────────────────────────────────────────────────────────────
