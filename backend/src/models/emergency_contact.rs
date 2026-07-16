@@ -7,6 +7,7 @@ pub struct EmergencyContact {
     pub id: Uuid,
     pub device_hash: String,
     pub name: String,
+    pub email: Option<String>,
     pub contact_device_hash: Option<String>,
     pub push_endpoint: Option<String>,
     pub push_p256dh: Option<String>,
@@ -19,6 +20,12 @@ pub struct EmergencyContact {
 pub struct AddContactPayload {
     pub device_hash: String,
     pub name: String,
+    pub email: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DeleteContactParams {
+    pub device_hash: String,
 }
 
 #[derive(Debug, Deserialize)]

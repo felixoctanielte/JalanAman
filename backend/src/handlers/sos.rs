@@ -10,7 +10,8 @@ use uuid::Uuid;
 use crate::{
     error::AppError,
     models::emergency_contact::{
-        AddContactPayload, EmergencyContact, GetContactsParams, SubscribePushPayload,
+        AddContactPayload, DeleteContactParams, EmergencyContact, GetContactsParams,
+        SubscribePushPayload,
     },
     AppState,
 };
@@ -39,6 +40,7 @@ pub struct ContactNotifyResult {
     pub name: String,
     pub connected: bool,
     pub push_sent: bool,
+    pub email_sent: bool,
     pub error: Option<String>,
 }
 
@@ -46,7 +48,6 @@ pub async fn trigger_sos(
     State(state): State<AppState>,
     Json(payload): Json<SosTriggerPayload>,
 ) -> Result<Json<SosTriggerResponse>, AppError> {
-    // Rate limit: 1 SOS per minute per device
     let mut redis_conn = state
         .redis
         .get_multiplexed_async_connection()
@@ -68,10 +69,9 @@ pub async fn trigger_sos(
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
-    // Fetch emergency contacts
     let contacts = sqlx::query_as::<_, EmergencyContact>(
         r#"
-        SELECT id, device_hash, name, contact_device_hash, push_endpoint,
+        SELECT id, device_hash, name, email, contact_device_hash, push_endpoint,
                push_p256dh, push_auth, invite_token, created_at
         FROM emergency_contacts
         WHERE device_hash = $1
@@ -88,52 +88,81 @@ pub async fn trigger_sos(
 
     let body_text = format!(
         "{}\nLokasi: https://maps.google.com/?q={},{}",
-        payload.message.as_deref().unwrap_or("SOS! Saya butuh bantuan!"),
+        payload
+            .message
+            .as_deref()
+            .unwrap_or("SOS! Saya butuh bantuan!"),
         payload.lat,
         payload.lng,
     );
 
     for contact in &contacts {
-        match (&contact.push_endpoint, &contact.push_p256dh, &contact.push_auth) {
-            (Some(ep), Some(p256dh), Some(auth)) => {
-                let res = send_web_push(
-                    &state.config.vapid_private_key_pem,
-                    ep,
-                    p256dh,
-                    auth,
-                    &body_text,
-                )
-                .await;
+        let mut push_sent = false;
+        let mut email_sent = false;
+        let mut error_msg: Option<String> = None;
 
-                match res {
-                    Ok(_) => {
-                        notified_count += 1;
-                        results.push(ContactNotifyResult {
-                            name: contact.name.clone(),
-                            connected: true,
-                            push_sent: true,
-                            error: None,
-                        });
-                    }
-                    Err(e) => {
-                        results.push(ContactNotifyResult {
-                            name: contact.name.clone(),
-                            connected: true,
-                            push_sent: false,
-                            error: Some(e.to_string()),
-                        });
+        // Try push notification first
+        if let (Some(ep), Some(p256dh), Some(auth)) = (
+            &contact.push_endpoint,
+            &contact.push_p256dh,
+            &contact.push_auth,
+        ) {
+            match send_web_push(
+                &state.config.vapid_private_key_pem,
+                ep,
+                p256dh,
+                auth,
+                &body_text,
+            )
+            .await
+            {
+                Ok(_) => {
+                    push_sent = true;
+                    notified_count += 1;
+                }
+                Err(e) => error_msg = Some(format!("push: {e}")),
+            }
+        }
+
+        // Fall back to email if push failed or not configured
+        if !push_sent {
+            if let Some(email_addr) = &contact.email {
+                if !email_addr.is_empty() {
+                    match send_email_alert(
+                        &state.config.smtp_host,
+                        state.config.smtp_port,
+                        &state.config.smtp_user,
+                        &state.config.smtp_pass,
+                        &state.config.smtp_from,
+                        email_addr,
+                        &contact.name,
+                        &body_text,
+                    )
+                    .await
+                    {
+                        Ok(_) => {
+                            email_sent = true;
+                            notified_count += 1;
+                        }
+                        Err(e) => {
+                            let msg = format!("email: {e}");
+                            error_msg = Some(match error_msg {
+                                Some(prev) => format!("{prev}; {msg}"),
+                                None => msg,
+                            });
+                        }
                     }
                 }
             }
-            _ => {
-                results.push(ContactNotifyResult {
-                    name: contact.name.clone(),
-                    connected: false,
-                    push_sent: false,
-                    error: Some("Kontak belum menghubungkan device-nya".into()),
-                });
-            }
         }
+
+        results.push(ContactNotifyResult {
+            name: contact.name.clone(),
+            connected: contact.push_endpoint.is_some() || contact.email.is_some(),
+            push_sent,
+            email_sent,
+            error: error_msg,
+        });
     }
 
     Ok(Json(SosTriggerResponse {
@@ -157,7 +186,6 @@ async fn send_web_push(
     };
 
     let subscription = SubscriptionInfo::new(endpoint, p256dh, auth);
-
     let sig = VapidSignatureBuilder::from_pem(Cursor::new(vapid_pem.as_bytes()), &subscription)?
         .build()?;
 
@@ -168,7 +196,41 @@ async fn send_web_push(
 
     let client = IsahcWebPushClient::new()?;
     client.send(builder.build()?).await?;
+    Ok(())
+}
 
+#[allow(clippy::too_many_arguments)]
+async fn send_email_alert(
+    smtp_host: &str,
+    smtp_port: u16,
+    smtp_user: &str,
+    smtp_pass: &str,
+    smtp_from: &str,
+    to_email: &str,
+    contact_name: &str,
+    body: &str,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    use lettre::{
+        message::header::ContentType, transport::smtp::authentication::Credentials,
+        AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
+    };
+
+    let email = Message::builder()
+        .from(smtp_from.parse()?)
+        .to(format!("{contact_name} <{to_email}>").parse()?)
+        .subject("🆘 SOS DARURAT - JalanAman")
+        .header(ContentType::TEXT_PLAIN)
+        .body(format!(
+            "{body}\n\nPesan ini dikirim otomatis oleh aplikasi JalanAman.\nJika ini darurat, segera hubungi 112."
+        ))?;
+
+    let creds = Credentials::new(smtp_user.to_string(), smtp_pass.to_string());
+    let mailer = AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(smtp_host)?
+        .port(smtp_port)
+        .credentials(creds)
+        .build();
+
+    mailer.send(email).await?;
     Ok(())
 }
 
@@ -182,19 +244,41 @@ pub async fn add_contact(
 
     let contact = sqlx::query_as::<_, EmergencyContact>(
         r#"
-        INSERT INTO emergency_contacts (device_hash, name, invite_token)
-        VALUES ($1, $2, $3)
-        RETURNING id, device_hash, name, contact_device_hash, push_endpoint,
+        INSERT INTO emergency_contacts (device_hash, name, email, invite_token)
+        VALUES ($1, $2, $3, $4)
+        RETURNING id, device_hash, name, email, contact_device_hash, push_endpoint,
                   push_p256dh, push_auth, invite_token, created_at
         "#,
     )
     .bind(&payload.device_hash)
     .bind(&payload.name)
+    .bind(&payload.email)
     .bind(&invite_token)
     .fetch_one(&state.db)
     .await?;
 
     Ok(Json(contact))
+}
+
+// ── Delete emergency contact ──────────────────────────────────────────────────
+
+pub async fn delete_contact(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+    Query(params): Query<DeleteContactParams>,
+) -> Result<Json<Value>, AppError> {
+    let rows = sqlx::query("DELETE FROM emergency_contacts WHERE id = $1 AND device_hash = $2")
+        .bind(id)
+        .bind(&params.device_hash)
+        .execute(&state.db)
+        .await?
+        .rows_affected();
+
+    if rows == 0 {
+        return Err(AppError::NotFound);
+    }
+
+    Ok(Json(json!({ "deleted": true })))
 }
 
 // ── Get emergency contacts ────────────────────────────────────────────────────
@@ -205,7 +289,7 @@ pub async fn get_contacts(
 ) -> Result<Json<Vec<EmergencyContact>>, AppError> {
     let contacts = sqlx::query_as::<_, EmergencyContact>(
         r#"
-        SELECT id, device_hash, name, contact_device_hash, push_endpoint,
+        SELECT id, device_hash, name, email, contact_device_hash, push_endpoint,
                push_p256dh, push_auth, invite_token, created_at
         FROM emergency_contacts
         WHERE device_hash = $1
@@ -266,7 +350,7 @@ pub async fn get_invite_info(
 ) -> Result<Json<InviteInfo>, AppError> {
     let contact = sqlx::query_as::<_, EmergencyContact>(
         r#"
-        SELECT id, device_hash, name, contact_device_hash, push_endpoint,
+        SELECT id, device_hash, name, email, contact_device_hash, push_endpoint,
                push_p256dh, push_auth, invite_token, created_at
         FROM emergency_contacts
         WHERE invite_token = $1

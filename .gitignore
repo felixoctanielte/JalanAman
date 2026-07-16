@@ -1,4 +1,5 @@
 /target
+frontend/mobile/target/
 .env
 *.pem
 *.key
@@ -7,3 +8,5 @@
 node_modules/
 dist/
 sqlx-data.json
+# Tailwind generated output (rebuilt by Trunk pre_build hook)
+frontend/web/assets/tw.css

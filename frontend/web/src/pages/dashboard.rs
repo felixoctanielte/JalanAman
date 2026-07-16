@@ -1,30 +1,57 @@
-use dioxus::prelude::*;
-use dioxus_router::prelude::*;
-use jalanaman_shared::{Report, category_emoji, category_label};
 use crate::{app::Route, services::api, utils::js};
+use dioxus::prelude::*;
+use jalanaman_shared::{category_emoji, category_label, Report};
 
 #[component]
 pub fn Dashboard() -> Element {
-    let mut reports = use_signal(|| Vec::<Report>::new());
+    let mut reports = use_signal(Vec::<Report>::new);
     let mut loading = use_signal(|| true);
+    let mut map_inited = use_signal(|| false);
 
+    // Fetch data then init map + heatmap. Leaflet is already loaded from CDN,
+    // so init_map() can be called synchronously right after data arrives.
     use_effect(move || {
         spawn(async move {
-            if let Ok(r) = api::get_reports(-6.2088, 106.8456, 50_000.0).await {
-                let pts: Vec<_> = r.iter()
-                    .map(|rp| serde_json::json!({"lat": rp.lat, "lng": rp.lng}))
+            // Jakarta-wide radius (50 km) for city-level heatmap
+            let data = api::get_reports(-6.2088, 106.8456, 50_000.0)
+                .await
+                .unwrap_or_default();
+
+            if !*map_inited.read() {
+                map_inited.set(true);
+                js::init_map(-6.2088, 106.8456);
+                let pts: Vec<_> = data
+                    .iter()
+                    .map(|r| serde_json::json!({ "lat": r.lat, "lng": r.lng }))
                     .collect();
                 js::init_heatmap(&serde_json::to_string(&pts).unwrap_or_default());
-                reports.set(r);
             }
+
+            reports.set(data);
             loading.set(false);
         });
     });
 
-    let crime_ct    = reports.read().iter().filter(|r| r.category == "crime").count();
-    let accident_ct = reports.read().iter().filter(|r| r.category == "accident").count();
-    let lighting_ct = reports.read().iter().filter(|r| r.category == "lighting").count();
-    let other_ct    = reports.read().iter().filter(|r| r.category == "other").count();
+    let crime_ct = reports
+        .read()
+        .iter()
+        .filter(|r| r.category == "crime")
+        .count();
+    let accident_ct = reports
+        .read()
+        .iter()
+        .filter(|r| r.category == "accident")
+        .count();
+    let lighting_ct = reports
+        .read()
+        .iter()
+        .filter(|r| r.category == "lighting")
+        .count();
+    let other_ct = reports
+        .read()
+        .iter()
+        .filter(|r| r.category == "other")
+        .count();
 
     rsx! {
         div { class: "min-h-screen bg-gray-50",
@@ -36,31 +63,28 @@ pub fn Dashboard() -> Element {
 
             div { class: "p-4 max-w-4xl mx-auto",
 
-                // Stat cards
                 div { class: "grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6",
-                    StatCard { icon: "🔴", label: "Rawan Begal",      count: crime_ct,    color: "red" }
-                    StatCard { icon: "🟠", label: "Rawan Kecelakaan", count: accident_ct, color: "orange" }
-                    StatCard { icon: "🟡", label: "Pencahayaan Buruk",count: lighting_ct, color: "yellow" }
-                    StatCard { icon: "⚪", label: "Lainnya",          count: other_ct,    color: "gray" }
+                    StatCard { icon: "🔴", label: "Rawan Begal",       count: crime_ct,    color: "red"    }
+                    StatCard { icon: "🟠", label: "Rawan Kecelakaan",  count: accident_ct, color: "orange" }
+                    StatCard { icon: "🟡", label: "Pencahayaan Buruk", count: lighting_ct, color: "yellow" }
+                    StatCard { icon: "⚪", label: "Lainnya",           count: other_ct,    color: "gray"   }
                 }
 
-                // Heatmap
                 div { class: "bg-white rounded-2xl shadow overflow-hidden mb-4",
                     div { class: "px-4 py-3 border-b border-gray-100",
                         h2 { class: "font-semibold text-gray-700", "Peta Titik Rawan (Heatmap)" }
-                        p  { class: "text-xs text-gray-400 mt-0.5", "Data 30 hari terakhir" }
+                        p  { class: "text-xs text-gray-400 mt-0.5", "Data 30 hari terakhir · OpenStreetMap" }
                     }
                     div { class: "relative",
                         div { id: "map-container", class: "w-full h-96" }
                         if *loading.read() {
                             div { class: "absolute inset-0 flex items-center justify-center bg-gray-50/80",
-                                span { class: "text-gray-400 text-sm", "Memuat data heatmap..." }
+                                span { class: "text-gray-400 text-sm", "Memuat heatmap..." }
                             }
                         }
                     }
                 }
 
-                // Recent reports table
                 div { class: "bg-white rounded-2xl shadow overflow-hidden",
                     div { class: "px-4 py-3 border-b border-gray-100 flex items-center justify-between",
                         h2 { class: "font-semibold text-gray-700", "Laporan Terbaru" }
@@ -95,10 +119,10 @@ pub fn Dashboard() -> Element {
 #[component]
 fn StatCard(icon: &'static str, label: &'static str, count: usize, color: &'static str) -> Element {
     let (bg, text) = match color {
-        "red"    => ("bg-red-50 border-red-100",       "text-red-700"),
+        "red" => ("bg-red-50 border-red-100", "text-red-700"),
         "orange" => ("bg-orange-50 border-orange-100", "text-orange-700"),
         "yellow" => ("bg-yellow-50 border-yellow-100", "text-yellow-700"),
-        _        => ("bg-gray-50 border-gray-100",     "text-gray-700"),
+        _ => ("bg-gray-50 border-gray-100", "text-gray-700"),
     };
     rsx! {
         div { class: "border {bg} rounded-2xl p-4",

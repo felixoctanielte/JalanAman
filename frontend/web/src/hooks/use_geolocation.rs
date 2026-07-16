@@ -1,7 +1,7 @@
 //! Custom hook that wraps the browser Geolocation API.
+use crate::utils::js::get_current_position;
 use dioxus::prelude::*;
 use wasm_bindgen::prelude::*;
-use crate::utils::js::get_current_position;
 
 /// Returns a signal that resolves to `Some((lat, lng))` once the browser
 /// provides a position. Stays `None` if geolocation is denied.

@@ -1,11 +1,11 @@
-/* JalanAman – global styles */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* SOS pulse animation */
-.sos-btn {
-  animation: sos-pulse 1.5s infinite;
+@layer utilities {
+  .sos-btn {
+    animation: sos-pulse 1.5s infinite;
+  }
 }
 
 @keyframes sos-pulse {
@@ -13,7 +13,6 @@
   50%       { box-shadow: 0 0 0 14px rgba(239, 68, 68, 0); }
 }
 
-/* Map container fills parent */
 #map-container {
   width: 100%;
   height: 100%;

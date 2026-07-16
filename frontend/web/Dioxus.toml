@@ -7,5 +7,16 @@ title     = "JalanAman – Rute Teraman"
 base_path = "/"
 
 [web.resource]
-style  = ["assets/tailwind.css"]
+style  = []
 script = []
+
+[web.resource.dev]
+style  = []
+script = []
+
+# Proxy /api dan /health ke backend Axum (cargo run di port 8080)
+[[web.proxy]]
+backend = "http://localhost:8080/api"
+
+[[web.proxy]]
+backend = "http://localhost:8080/health"

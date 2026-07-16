@@ -63,6 +63,7 @@ pub struct EmergencyContact {
     pub id: String,
     pub device_hash: String,
     pub name: String,
+    pub email: Option<String>,
     pub contact_device_hash: Option<String>,
     pub push_endpoint: Option<String>,
     pub push_p256dh: Option<String>,
@@ -75,6 +76,7 @@ pub struct EmergencyContact {
 pub struct AddContactPayload {
     pub device_hash: String,
     pub name: String,
+    pub email: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -96,26 +98,26 @@ pub struct PublicConfig {
 
 pub fn safety_level_label(level: &str) -> &'static str {
     match level {
-        "Aman"    => "✅ Aman",
+        "Aman" => "✅ Aman",
         "Waspada" => "⚠️ Waspada",
-        _         => "🚫 Hindari",
+        _ => "🚫 Hindari",
     }
 }
 
 pub fn category_label(cat: &str) -> &'static str {
     match cat {
-        "crime"    => "Rawan Begal/Copet",
+        "crime" => "Rawan Begal/Copet",
         "accident" => "Rawan Kecelakaan",
         "lighting" => "Pencahayaan Buruk",
-        _          => "Lainnya",
+        _ => "Lainnya",
     }
 }
 
 pub fn category_emoji(cat: &str) -> &'static str {
     match cat {
-        "crime"    => "🔴",
+        "crime" => "🔴",
         "accident" => "🟠",
         "lighting" => "🟡",
-        _          => "⚪",
+        _ => "⚪",
     }
 }

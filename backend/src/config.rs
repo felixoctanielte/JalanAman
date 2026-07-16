@@ -9,6 +9,12 @@ pub struct Config {
     pub vapid_public_key: String,
     pub google_maps_api_key: String,
     pub frontend_url: String,
+    // SMTP for SOS email alerts
+    pub smtp_host: String,
+    pub smtp_port: u16,
+    pub smtp_user: String,
+    pub smtp_pass: String,
+    pub smtp_from: String,
 }
 
 impl Config {
@@ -28,6 +34,15 @@ impl Config {
             google_maps_api_key: env::var("GOOGLE_MAPS_API_KEY").unwrap_or_default(),
             frontend_url: env::var("FRONTEND_URL")
                 .unwrap_or_else(|_| "http://localhost:3000".to_string()),
+            smtp_host: env::var("SMTP_HOST").unwrap_or_else(|_| "smtp.gmail.com".to_string()),
+            smtp_port: env::var("SMTP_PORT")
+                .unwrap_or_else(|_| "587".to_string())
+                .parse()
+                .unwrap_or(587),
+            smtp_user: env::var("SMTP_USER").unwrap_or_default(),
+            smtp_pass: env::var("SMTP_PASS").unwrap_or_default(),
+            smtp_from: env::var("SMTP_FROM")
+                .unwrap_or_else(|_| "JalanAman SOS <sos@jalanaman.id>".to_string()),
         })
     }
 }

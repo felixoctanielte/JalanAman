@@ -1,7 +1,6 @@
 use dioxus::prelude::*;
-use dioxus_router::prelude::*;
 
-use crate::pages::{dashboard::Dashboard, home::Home, invite::Invite};
+use crate::pages::{contacts::Contacts, dashboard::Dashboard, home::Home, invite::Invite};
 
 #[derive(Clone, Routable, Debug, PartialEq)]
 pub enum Route {
@@ -9,10 +8,13 @@ pub enum Route {
     Home {},
     #[route("/dashboard")]
     Dashboard {},
+    #[route("/contacts")]
+    Contacts {},
     #[route("/invite/:token")]
     Invite { token: String },
 }
 
+#[allow(non_snake_case)]
 pub fn App() -> Element {
     rsx! { Router::<Route> {} }
 }

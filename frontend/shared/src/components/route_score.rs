@@ -1,6 +1,6 @@
 //! Route score panel – pure RSX. Platform provides score data via props.
-use dioxus::prelude::*;
 use crate::utils::types::RouteScoreResponse;
+use dioxus::prelude::*;
 
 #[component]
 pub fn RouteScorePanel(
@@ -10,7 +10,7 @@ pub fn RouteScorePanel(
     /// Called with the destination string when user submits the form.
     on_search: EventHandler<String>,
 ) -> Element {
-    let mut destination = use_signal(|| String::new());
+    let mut destination = use_signal(String::new);
 
     rsx! {
         div {

@@ -6,6 +6,16 @@ dist = "dist"
 port = 3000
 open = false
 
+[[hooks]]
+stage = "pre_build"
+command = "npx"
+command_arguments = [
+  "tailwindcss",
+  "-i", "assets/tailwind.css",
+  "-o", "assets/tw.css",
+  "--minify"
+]
+
 [[proxy]]
 backend = "http://localhost:8080/api"
 rewrite = "/api"

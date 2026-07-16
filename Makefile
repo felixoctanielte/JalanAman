@@ -1,4 +1,7 @@
-.PHONY: dev up down logs db-reset seed vapid-keys fmt check
+.PHONY: dev-infra dev-backend dev-web dev-android dev-ios dev-frontend up down logs db-migrate db-reset seed vapid-keys fmt check build-backend build-frontend build-android
+
+MOBILE_GRADLE_HOME := $(CURDIR)/frontend/mobile/target/gradle-home
+ANDROID_API ?= 23
 
 # ── Dev mode (infra only, run backend locally) ────────────────────────────────
 dev-infra:
@@ -7,8 +10,19 @@ dev-infra:
 dev-backend:
 	cd backend && cargo watch -x run
 
-dev-frontend:
-	cd frontend && trunk serve --proxy-backend http://localhost:8080/api
+# Build Tailwind lalu jalankan dx serve (web)
+dev-web:
+	cd frontend/web && npx tailwindcss -i assets/tailwind.css -o assets/tw.css && dx serve
+
+# Mobile: pastikan Android SDK + NDK sudah terpasang
+dev-android:
+	cd frontend/mobile && GRADLE_USER_HOME=$(MOBILE_GRADLE_HOME) dx serve --platform android
+
+dev-ios:
+	cd frontend/mobile && dx serve --platform ios
+
+# Alias lama
+dev-frontend: dev-web
 
 # ── Full Docker stack ─────────────────────────────────────────────────────────
 up:
@@ -37,15 +51,18 @@ vapid-keys:
 
 # ── Code quality ─────────────────────────────────────────────────────────────
 fmt:
-	cd backend && cargo fmt
-	cd frontend && cargo fmt
+	cargo fmt --all
+	cd frontend/mobile && cargo fmt
 
 check:
-	cd backend && cargo clippy -- -D warnings
-	cd frontend && cargo clippy -- -D warnings
+	cargo clippy --workspace -- -D warnings
+	cd frontend/mobile && CC_aarch64_linux_android="$${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android$(ANDROID_API)-clang" AR_aarch64_linux_android="$${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar" cargo check --target aarch64-linux-android
 
 build-backend:
 	cd backend && cargo build --release
 
 build-frontend:
-	cd frontend && trunk build --release
+	cd frontend/web && npx tailwindcss -i assets/tailwind.css -o assets/tw.css --minify && dx build --release
+
+build-android:
+	cd frontend/mobile && GRADLE_USER_HOME=$(MOBILE_GRADLE_HOME) dx build --platform android

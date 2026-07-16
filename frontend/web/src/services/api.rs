@@ -9,7 +9,10 @@ pub async fn fetch_config() -> Result<PublicConfig, String> {
 }
 
 pub async fn get_reports(lat: f64, lng: f64, radius: f64) -> Result<Vec<Report>, String> {
-    req_get(&format!("{BASE}/reports?lat={lat}&lng={lng}&radius={radius}")).await
+    req_get(&format!(
+        "{BASE}/reports?lat={lat}&lng={lng}&radius={radius}"
+    ))
+    .await
 }
 
 pub async fn create_report(p: &CreateReportPayload) -> Result<Report, String> {
@@ -25,27 +28,43 @@ pub async fn create_report(p: &CreateReportPayload) -> Result<Report, String> {
     resp.json().await.map_err(|e| e.to_string())
 }
 
+#[allow(dead_code)]
 pub async fn upvote_report(id: &str) -> Result<Report, String> {
     Request::post(&format!("{BASE}/reports/{id}/upvote"))
-        .send().await.map_err(|e| e.to_string())?
-        .json().await.map_err(|e| e.to_string())
+        .send()
+        .await
+        .map_err(|e| e.to_string())?
+        .json()
+        .await
+        .map_err(|e| e.to_string())
 }
 
+#[allow(dead_code)]
 pub async fn downvote_report(id: &str) -> Result<Report, String> {
     Request::post(&format!("{BASE}/reports/{id}/downvote"))
-        .send().await.map_err(|e| e.to_string())?
-        .json().await.map_err(|e| e.to_string())
+        .send()
+        .await
+        .map_err(|e| e.to_string())?
+        .json()
+        .await
+        .map_err(|e| e.to_string())
 }
 
 pub async fn calculate_route_score(waypoints: Vec<Waypoint>) -> Result<RouteScoreResponse, String> {
     let resp = Request::post(&format!("{BASE}/route-score"))
         .json(&RouteScorePayload { waypoints })
         .map_err(|e| e.to_string())?
-        .send().await.map_err(|e| e.to_string())?;
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
     resp.json().await.map_err(|e| e.to_string())
 }
 
-pub async fn trigger_sos(device_hash: &str, lat: f64, lng: f64) -> Result<SosTriggerResponse, String> {
+pub async fn trigger_sos(
+    device_hash: &str,
+    lat: f64,
+    lng: f64,
+) -> Result<SosTriggerResponse, String> {
     let resp = Request::post(&format!("{BASE}/sos/trigger"))
         .json(&SosTriggerPayload {
             device_hash: device_hash.to_string(),
@@ -54,7 +73,9 @@ pub async fn trigger_sos(device_hash: &str, lat: f64, lng: f64) -> Result<SosTri
             message: Some("🆘 SOS! Saya butuh bantuan!".into()),
         })
         .map_err(|e| e.to_string())?
-        .send().await.map_err(|e| e.to_string())?;
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
     if resp.status() == 429 {
         return Err("SOS sudah dikirim. Tunggu 1 menit.".into());
     }
@@ -65,15 +86,34 @@ pub async fn get_contacts(device_hash: &str) -> Result<Vec<EmergencyContact>, St
     req_get(&format!("{BASE}/sos/contacts?device_hash={device_hash}")).await
 }
 
-pub async fn add_contact(device_hash: &str, name: &str) -> Result<EmergencyContact, String> {
+pub async fn add_contact(
+    device_hash: &str,
+    name: &str,
+    email: Option<String>,
+) -> Result<EmergencyContact, String> {
     Request::post(&format!("{BASE}/sos/contacts"))
         .json(&AddContactPayload {
             device_hash: device_hash.to_string(),
             name: name.to_string(),
+            email,
         })
         .map_err(|e| e.to_string())?
-        .send().await.map_err(|e| e.to_string())?
-        .json().await.map_err(|e| e.to_string())
+        .send()
+        .await
+        .map_err(|e| e.to_string())?
+        .json()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+pub async fn delete_contact(id: &str, device_hash: &str) -> Result<(), String> {
+    Request::delete(&format!(
+        "{BASE}/sos/contacts/{id}?device_hash={device_hash}"
+    ))
+    .send()
+    .await
+    .map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 pub async fn get_invite_info(token: &str) -> Result<serde_json::Value, String> {
@@ -82,8 +122,11 @@ pub async fn get_invite_info(token: &str) -> Result<serde_json::Value, String> {
 
 pub async fn subscribe_push_backend(p: &SubscribePushPayload) -> Result<(), String> {
     Request::post(&format!("{BASE}/sos/subscribe"))
-        .json(p).map_err(|e| e.to_string())?
-        .send().await.map_err(|e| e.to_string())?;
+        .json(p)
+        .map_err(|e| e.to_string())?
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -91,6 +134,10 @@ pub async fn subscribe_push_backend(p: &SubscribePushPayload) -> Result<(), Stri
 
 async fn req_get<T: serde::de::DeserializeOwned>(url: &str) -> Result<T, String> {
     Request::get(url)
-        .send().await.map_err(|e| e.to_string())?
-        .json().await.map_err(|e| e.to_string())
+        .send()
+        .await
+        .map_err(|e| e.to_string())?
+        .json()
+        .await
+        .map_err(|e| e.to_string())
 }

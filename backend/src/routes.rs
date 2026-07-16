@@ -18,14 +18,24 @@ pub fn create_router(state: AppState) -> Router {
 fn api_routes() -> Router<AppState> {
     Router::new()
         // Reports
-        .route("/reports", post(reports::create_report).get(reports::get_reports))
+        .route(
+            "/reports",
+            post(reports::create_report).get(reports::get_reports),
+        )
         .route("/reports/:id/upvote", post(reports::upvote_report))
         .route("/reports/:id/downvote", post(reports::downvote_report))
         // Route safety score
         .route("/route-score", post(route_score::calculate_route_score))
         // SOS & emergency contacts
         .route("/sos/trigger", post(sos::trigger_sos))
-        .route("/sos/contacts", post(sos::add_contact).get(sos::get_contacts))
+        .route(
+            "/sos/contacts",
+            post(sos::add_contact).get(sos::get_contacts),
+        )
+        .route(
+            "/sos/contacts/:id",
+            axum::routing::delete(sos::delete_contact),
+        )
         .route("/sos/subscribe", post(sos::subscribe_push))
         .route("/sos/invite/:token", get(sos::get_invite_info))
         // Config (exposes public VAPID key and Maps key to frontend)

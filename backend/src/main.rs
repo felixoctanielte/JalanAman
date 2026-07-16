@@ -46,10 +46,14 @@ async fn main() {
 
     tracing::info!("Migrations applied successfully");
 
-    let redis = redis::Client::open(config.redis_url.clone())
-        .expect("Failed to create Redis client");
+    let redis =
+        redis::Client::open(config.redis_url.clone()).expect("Failed to create Redis client");
 
-    let state = AppState { db, redis, config: config.clone() };
+    let state = AppState {
+        db,
+        redis,
+        config: config.clone(),
+    };
 
     let cors = CorsLayer::new()
         .allow_origin(Any)

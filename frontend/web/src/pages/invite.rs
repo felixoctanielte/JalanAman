@@ -1,12 +1,12 @@
-use dioxus::prelude::*;
 use crate::services::{api, push};
+use dioxus::prelude::*;
 
 #[component]
 pub fn Invite(token: String) -> Element {
-    let mut contact_name      = use_signal(|| Option::<String>::None);
+    let mut contact_name = use_signal(|| Option::<String>::None);
     let mut already_connected = use_signal(|| false);
-    let mut step              = use_signal(|| 0u8); // 0=loading 1=info 2=done 3=error
-    let mut error_msg         = use_signal(|| String::new());
+    let mut step = use_signal(|| 0u8); // 0=loading 1=info 2=done 3=error
+    let mut error_msg = use_signal(String::new);
 
     let token_clone = token.clone();
     use_effect(move || {
@@ -31,8 +31,11 @@ pub fn Invite(token: String) -> Element {
         let t = token_for_sub.clone();
         spawn(async move {
             match push::onboard_push(&t).await {
-                Ok(_)  => step.set(2),
-                Err(e) => { error_msg.set(e); step.set(3); }
+                Ok(_) => step.set(2),
+                Err(e) => {
+                    error_msg.set(e);
+                    step.set(3);
+                }
             }
         });
     };

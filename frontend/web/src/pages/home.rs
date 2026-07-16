@@ -1,41 +1,45 @@
 use dioxus::prelude::*;
-use dioxus_router::prelude::*;
 use jalanaman_shared::{
-    components::{
-        report_form::ReportForm,
-        route_score::RouteScorePanel,
-        sos_button::SosButton,
-    },
+    components::{report_form::ReportForm, route_score::RouteScorePanel, sos_button::SosButton},
     Report, RouteScoreResponse, Waypoint,
 };
+use wasm_bindgen_futures::JsFuture;
 
 use crate::{
-    app::Route,
-    components::map::MapView,
-    hooks::use_geolocation::use_geolocation,
-    services::api,
-    utils::js,
-    utils::device::get_device_hash,
+    app::Route, components::map::MapView, hooks::use_geolocation::use_geolocation, services::api,
+    utils::device::get_device_hash, utils::js,
 };
+
+#[derive(serde::Deserialize)]
+struct DirectionsResult {
+    waypoints: Vec<Waypoint>,
+    polyline: Vec<Waypoint>,
+}
 
 #[component]
 pub fn Home() -> Element {
-    let mut reports       = use_signal(|| Vec::<Report>::new());
-    let location          = use_geolocation();
-    let mut show_report   = use_signal(|| false);
-    let mut show_route    = use_signal(|| false);
-    let mut sos_active    = use_signal(|| false);
-    let mut sos_msg       = use_signal(|| Option::<String>::None);
+    let mut reports = use_signal(Vec::<Report>::new);
+    let location = use_geolocation();
+    let mut show_report = use_signal(|| false);
+    let mut show_route = use_signal(|| false);
+    let mut sos_active = use_signal(|| false);
+    let mut sos_msg = use_signal(|| Option::<String>::None);
     let mut report_loading = use_signal(|| false);
-    let mut report_error  = use_signal(|| Option::<String>::None);
-    let mut route_result  = use_signal(|| Option::<RouteScoreResponse>::None);
+    let mut report_error = use_signal(|| Option::<String>::None);
+    let mut route_result = use_signal(|| Option::<RouteScoreResponse>::None);
     let mut route_loading = use_signal(|| false);
-    let mut route_error   = use_signal(|| Option::<String>::None);
+    let mut route_error = use_signal(|| Option::<String>::None);
+    // Prevent double-init when location signal fires multiple times
+    let mut map_inited = use_signal(|| false);
 
-    // Boot: load Maps + fetch nearby reports whenever location resolves
+    // Leaflet loads from CDN synchronously → init_map can be called immediately
+    // once geolocation resolves.
     use_effect(move || {
         let loc = *location.read();
-        if let Some((lat, lng)) = loc {
+        let inited = *map_inited.read();
+        if loc.is_some() && !inited {
+            let (lat, lng) = loc.unwrap();
+            map_inited.set(true);
             js::init_map(lat, lng);
             spawn(async move {
                 if let Ok(r) = api::get_reports(lat, lng, 800.0).await {
@@ -45,14 +49,10 @@ pub fn Home() -> Element {
         }
     });
 
-    // Load Google Maps API key once on mount
+    // Register service worker for push notifications
     use_effect(move || {
         spawn(async move {
-            if let Ok(cfg) = api::fetch_config().await {
-                js::load_google_maps(&cfg.google_maps_api_key);
-                // Also register service worker for push
-                crate::services::push::register_service_worker().await;
-            }
+            crate::services::push::register_service_worker().await;
         });
     });
 
@@ -67,48 +67,65 @@ pub fn Home() -> Element {
                 }
                 div { class: "flex items-center gap-2",
                     button {
-                        class: "text-sm bg-blue-600 hover:bg-blue-500 px-3 py-1.5 rounded-full font-medium",
-                        onclick: move |_| show_route.toggle(),
+                        class: "text-sm bg-blue-600 hover:bg-blue-500 px-3 py-1.5 rounded-full font-medium transition",
+                        onclick: move |_| { let v = *show_route.read(); show_route.set(!v); },
                         "🗺 Skor Rute"
                     }
                     Link {
+                        to: Route::Contacts {},
+                        class: "text-sm bg-blue-600 hover:bg-blue-500 px-3 py-1.5 rounded-full font-medium transition",
+                        "🆘 Kontak"
+                    }
+                    Link {
                         to: Route::Dashboard {},
-                        class: "text-sm bg-blue-800 hover:bg-blue-700 px-3 py-1.5 rounded-full font-medium",
+                        class: "text-sm bg-blue-800 hover:bg-blue-700 px-3 py-1.5 rounded-full font-medium transition",
                         "📊"
                     }
                 }
             }
 
-            // ── Map + overlays ────────────────────────────────────────────────
+            // ── Map + overlays ─────────────────────────────────────────────────
             div { class: "flex-1 relative overflow-hidden",
                 MapView { reports: reports.read().clone() }
 
+                // Route score panel
                 if *show_route.read() {
                     RouteScorePanel {
                         result: route_result.read().clone(),
                         loading: *route_loading.read(),
                         error: route_error.read().clone(),
                         on_search: move |dest: String| {
-                            // Demo: send a fixed waypoint set for now.
-                            // In full impl, call Google Directions API via JS,
-                            // decode polyline, then call calculate_route_score.
-                            let demo_wps = vec![
-                                Waypoint { lat: -6.2088, lng: 106.8456 },
-                                Waypoint { lat: -6.2100, lng: 106.8470 },
-                            ];
                             route_loading.set(true);
                             route_error.set(None);
+                            route_result.set(None);
+
+                            let loc_val = *location.read();
+                            let origin = loc_val
+                                .map(|(la, lo)| format!("{la},{lo}"))
+                                .unwrap_or_else(|| "Jakarta Pusat".to_string());
+
                             spawn(async move {
-                                match api::calculate_route_score(demo_wps).await {
-                                    Ok(r) => {
-                                        let pts = serde_json::json!([
-                                            {"lat":-6.2088,"lng":106.8456},
-                                            {"lat":-6.2100,"lng":106.8470},
-                                        ]);
-                                        js::draw_route_polyline(&pts.to_string(), &r.level);
-                                        route_result.set(Some(r));
+                                match JsFuture::from(js::get_directions(&origin, &dest, "walking")).await {
+                                    Err(e) => {
+                                        route_error.set(Some(format!("Rute tidak ditemukan: {e:?}")));
                                     }
-                                    Err(e) => route_error.set(Some(e)),
+                                    Ok(val) => {
+                                        let json_str = val.as_string().unwrap_or_default();
+                                        match serde_json::from_str::<DirectionsResult>(&json_str) {
+                                            Err(e) => route_error.set(Some(format!("Parse error: {e}"))),
+                                            Ok(dirs) => {
+                                                match api::calculate_route_score(dirs.waypoints).await {
+                                                    Ok(score) => {
+                                                        let pts = serde_json::to_string(&dirs.polyline)
+                                                            .unwrap_or_default();
+                                                        js::draw_route_polyline(&pts, &score.level);
+                                                        route_result.set(Some(score));
+                                                    }
+                                                    Err(e) => route_error.set(Some(e)),
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                                 route_loading.set(false);
                             });
@@ -117,13 +134,13 @@ pub fn Home() -> Element {
                 }
 
                 // Report count badge
-                div { class: "absolute top-3 left-3 bg-white/90 backdrop-blur rounded-xl px-3 py-1.5 shadow text-xs text-gray-600 font-medium",
+                div { class: "absolute top-3 left-3 bg-white/90 backdrop-blur rounded-xl px-3 py-1.5 shadow text-xs text-gray-600 font-medium z-10",
                     "⚠️ {reports.read().len()} laporan aktif"
                 }
 
-                // Report button
+                // Lapor Bahaya button
                 button {
-                    class: "absolute bottom-28 left-4 bg-white shadow-lg rounded-full px-4 py-3 flex items-center gap-2 border border-gray-100 hover:bg-gray-50 active:scale-95 transition text-sm font-semibold text-gray-700",
+                    class: "absolute bottom-28 left-4 bg-white shadow-lg rounded-full px-4 py-3 flex items-center gap-2 border border-gray-100 hover:bg-gray-50 active:scale-95 transition text-sm font-semibold text-gray-700 z-10",
                     onclick: move |_| { show_report.set(true); report_error.set(None); },
                     "⚠️ Lapor Bahaya"
                 }
@@ -144,7 +161,7 @@ pub fn Home() -> Element {
                                     "Alarm aktif. {}/{} kontak diberitahu.",
                                     r.notified_count, r.total_contacts
                                 ))),
-                                Err(e) => sos_msg.set(Some(format!("Alarm aktif. Push error: {e}"))),
+                                Err(e) => sos_msg.set(Some(format!("Alarm aktif. Gagal: {e}"))),
                             }
                         });
                     },
@@ -156,11 +173,11 @@ pub fn Home() -> Element {
                 }
             }
 
-            // ── Report form modal ─────────────────────────────────────────────
+            // ── Quick Report modal ─────────────────────────────────────────────
             if *show_report.read() {
                 ReportForm {
-                    lat: location.read().map(|(la, _)| la),
-                    lng: location.read().map(|(_, lo)| lo),
+                    lat: (*location.read()).map(|(la, _)| la),
+                    lng: (*location.read()).map(|(_, lo)| lo),
                     device_hash: get_device_hash(),
                     loading: *report_loading.read(),
                     error: report_error.read().clone(),
@@ -172,7 +189,8 @@ pub fn Home() -> Element {
                             match api::create_report(&payload).await {
                                 Ok(r) => {
                                     js::add_report_marker(
-                                        &r.id, r.lat, r.lng, &r.category,
+                                        &r.id, r.lat, r.lng,
+                                        &r.category,
                                         r.note.as_deref().unwrap_or(""),
                                     );
                                     reports.write().insert(0, r);
