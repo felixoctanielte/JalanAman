@@ -1,0 +1,11 @@
+[application]
+name            = "jalanaman-web"
+default_platform = "web"
+
+[web.app]
+title     = "JalanAman – Rute Teraman"
+base_path = "/"
+
+[web.resource]
+style  = ["assets/tailwind.css"]
+script = []

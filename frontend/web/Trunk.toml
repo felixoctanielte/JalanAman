@@ -1,0 +1,15 @@
+[build]
+target = "index.html"
+dist = "dist"
+
+[serve]
+port = 3000
+open = false
+
+[[proxy]]
+backend = "http://localhost:8080/api"
+rewrite = "/api"
+
+[[proxy]]
+backend = "http://localhost:8080/health"
+rewrite = "/health"

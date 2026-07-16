@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#1d4ed8" />
+  <meta name="description" content="JalanAman – Rute Teraman untuk Pejalan Kaki Indonesia" />
+  <title>JalanAman</title>
+
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+
+  <!-- Tailwind CDN (replace with postcss build for production) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Dioxus WASM entry – Trunk replaces this -->
+  <link data-trunk rel="rust" data-wasm-opt="z" />
+  <link data-trunk rel="copy-dir" href="public" />
+
+  <style>
+    #map-container { width: 100%; height: 100%; }
+    .sos-btn { animation: pulse 1.5s infinite; }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.7); }
+      50%       { box-shadow: 0 0 0 12px rgba(239,68,68,0); }
+    }
+  </style>
+</head>
+<body class="overflow-hidden">
+
+<div id="main"></div>
+
+<!-- ── Google Maps ────────────────────────────────────────────────────────── -->
+<!-- The JS below is loaded AFTER the WASM boots; Maps API key is fetched     -->
+<!-- from /api/config at runtime, so we don't bake it into the HTML.          -->
+<script>
+  // Loaded dynamically once we have the API key (see api.rs fetchConfig)
+  window.__loadGoogleMaps = function(apiKey) {
+    if (document.getElementById('gmap-script')) return;
+    const s = document.createElement('script');
+    s.id = 'gmap-script';
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=visualization&callback=__gmapReady`;
+    s.async = true;
+    s.defer = true;
+    document.head.appendChild(s);
+  };
+
+  window.__gmapReady = function() {
+    window.__gmapsLoaded = true;
+    document.dispatchEvent(new Event('gmaps-ready'));
+  };
+</script>
+
+<!-- ── JalanAman JS helpers (called from Rust via wasm_bindgen) ──────────── -->
+<script>
+  // ─ Map helpers ─────────────────────────────────────────────────────────────
+  window.jaMap = null;
+  window.jaMarkers = [];
+  window.jaHeatmap = null;
+  window.jaPolyline = null;
+
+  window.ja_initMap = function(lat, lng) {
+    const el = document.getElementById('map-container');
+    if (!el || !window.google) return;
+    window.jaMap = new google.maps.Map(el, {
+      center: { lat, lng },
+      zoom: 16,
+      disableDefaultUI: true,
+      zoomControl: true,
+      styles: [{ featureType: 'poi', stylers: [{ visibility: 'off' }] }],
+    });
+  };
+
+  window.ja_addReportMarker = function(id, lat, lng, category, note) {
+    if (!window.jaMap) return;
+    const icons = {
+      crime:    '🔴',
+      lighting: '🟡',
+      accident: '🟠',
+      other:    '⚪',
+    };
+    const emoji = icons[category] || '⚪';
+    const marker = new google.maps.Marker({
+      position: { lat, lng },
+      map: window.jaMap,
+      label: { text: emoji, fontSize: '18px' },
+      title: note || category,
+    });
+    marker.__id = id;
+    window.jaMarkers.push(marker);
+  };
+
+  window.ja_clearMarkers = function() {
+    window.jaMarkers.forEach(m => m.setMap(null));
+    window.jaMarkers = [];
+  };
+
+  window.ja_drawRoutePolyline = function(waypointsJson, level) {
+    if (!window.jaMap) return;
+    const pts = JSON.parse(waypointsJson);
+    const colors = { Aman: '#22c55e', Waspada: '#f59e0b', Hindari: '#ef4444' };
+    if (window.jaPolyline) window.jaPolyline.setMap(null);
+    window.jaPolyline = new google.maps.Polyline({
+      path: pts.map(p => ({ lat: p.lat, lng: p.lng })),
+      strokeColor: colors[level] || '#6b7280',
+      strokeOpacity: 0.9,
+      strokeWeight: 5,
+      map: window.jaMap,
+    });
+  };
+
+  window.ja_initHeatmap = function(pointsJson) {
+    if (!window.jaMap || !google.maps.visualization) return;
+    const pts = JSON.parse(pointsJson).map(p =>
+      new google.maps.LatLng(p.lat, p.lng)
+    );
+    if (window.jaHeatmap) window.jaHeatmap.setMap(null);
+    window.jaHeatmap = new google.maps.visualization.HeatmapLayer({
+      data: pts,
+      map: window.jaMap,
+      radius: 30,
+    });
+  };
+
+  window.ja_panTo = function(lat, lng) {
+    if (window.jaMap) window.jaMap.panTo({ lat, lng });
+  };
+
+  // ─ Geolocation ─────────────────────────────────────────────────────────────
+  window.ja_getCurrentPosition = function(callback) {
+    if (!navigator.geolocation) { callback(null, null); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => callback(pos.coords.latitude, pos.coords.longitude),
+      _   => callback(null, null),
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
+
+  // ─ SOS alarm (local) ───────────────────────────────────────────────────────
+  window.ja_playSOSAlarm = function() {
+    // Vibration
+    if (navigator.vibrate) {
+      navigator.vibrate([800, 200, 800, 200, 800, 200, 800]);
+    }
+    // Audio: alternating high/low beeps
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const freqs = [880, 440, 880, 440, 880, 440];
+      freqs.forEach((freq, i) => {
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.value = freq;
+        gain.gain.value = 0.4;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        const t = ctx.currentTime + i * 0.45;
+        osc.start(t);
+        osc.stop(t + 0.4);
+      });
+    } catch (e) { console.warn('AudioContext error', e); }
+  };
+
+  window.ja_stopSOSAlarm = function() {
+    if (navigator.vibrate) navigator.vibrate(0);
+    // AudioContext nodes auto-stop; nothing else to do
+  };
+
+  // ─ Push Notification subscription ─────────────────────────────────────────
+  window.ja_registerServiceWorker = async function() {
+    if (!('serviceWorker' in navigator)) return null;
+    try {
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      return reg;
+    } catch (e) { console.error('SW register failed', e); return null; }
+  };
+
+  window.ja_subscribePush = async function(vapidPublicKey) {
+    const reg = await navigator.serviceWorker.ready;
+    const existing = await reg.pushManager.getSubscription();
+    if (existing) return JSON.stringify(existing.toJSON());
+
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: ja_urlBase64ToUint8Array(vapidPublicKey),
+    });
+    return JSON.stringify(sub.toJSON());
+  };
+
+  window.ja_urlBase64ToUint8Array = function(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = window.atob(base64);
+    return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+  };
+
+  window.ja_requestNotificationPermission = async function() {
+    if (!('Notification' in window)) return 'denied';
+    return await Notification.requestPermission();
+  };
+
+  // ─ Local device hash (persisted) ──────────────────────────────────────────
+  window.ja_getDeviceHash = function() {
+    let h = localStorage.getItem('ja_device_hash');
+    if (!h) {
+      // Simple random ID, not cryptographically linked to hardware
+      h = crypto.randomUUID();
+      localStorage.setItem('ja_device_hash', h);
+    }
+    return h;
+  };
+</script>
+
+</body>
+</html>

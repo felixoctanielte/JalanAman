@@ -1,0 +1,9 @@
+/target
+.env
+*.pem
+*.key
+!.env.example
+.DS_Store
+node_modules/
+dist/
+sqlx-data.json
