@@ -162,6 +162,10 @@ class JalanAmanLocationBridge(private val context: Context) {
     }
   }
 
+  @JavascriptInterface
+  fun isSosAlarmActiveJson(): String =
+    JSONObject().put("active", SosAlarmService.isAlarmActive()).toString()
+
   private fun hasLocationPermission(): Boolean {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
 
@@ -264,6 +268,9 @@ class SosAlarmService : Service() {
     const val ACTION_STOP = "dev.dioxus.main.SOS_STOP"
     private const val CHANNEL_ID = "jalanaman_sos_alarm"
     private const val NOTIFICATION_ID = 6202
+    @Volatile private var alarmActive = false
+
+    fun isAlarmActive(): Boolean = alarmActive
   }
 
   private var player: MediaPlayer? = null
@@ -282,6 +289,7 @@ class SosAlarmService : Service() {
 
     startForeground(NOTIFICATION_ID, buildNotification())
     startAlarm()
+    alarmActive = true
     return START_STICKY
   }
 
@@ -361,6 +369,7 @@ class SosAlarmService : Service() {
   }
 
   private fun stopAlarm() {
+    alarmActive = false
     vibrator?.cancel()
     vibrator = null
     player?.runCatching {

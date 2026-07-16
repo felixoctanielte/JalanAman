@@ -234,6 +234,17 @@ fn Home() -> Element {
         show_splash.set(false);
     });
 
+    use_future(move || async move {
+        if is_sos_alarm_active().await {
+            sos_active.set(true);
+            sos_msg.set(Some(
+                "Alarm SOS masih aktif. Hentikan lewat tombol ini atau notifikasi sistem."
+                    .to_string(),
+            ));
+            sos_modal_open.set(true);
+        }
+    });
+
     use_effect(move || {
         spawn(async move {
             let hash = read_device_hash().await;
@@ -1718,6 +1729,25 @@ async fn start_sos_alarm() {
             "#,
     )
     .await;
+}
+
+async fn is_sos_alarm_active() -> bool {
+    let eval = document::eval(
+        r#"
+        try {
+            if (window.JalanAmanNative && window.JalanAmanNative.isSosAlarmActiveJson) {
+                const result = JSON.parse(window.JalanAmanNative.isSosAlarmActiveJson());
+                return !!result.active;
+            }
+        } catch (_) {}
+        return false;
+        "#,
+    );
+
+    eval.await
+        .ok()
+        .and_then(|value| bool::deserialize(&value).ok())
+        .unwrap_or(false)
 }
 
 fn stop_sos_alarm() {
