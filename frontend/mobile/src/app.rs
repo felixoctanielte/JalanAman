@@ -133,55 +133,68 @@ const CATEGORIES: [ReportCategory; 4] = [
     ReportCategory::Other,
 ];
 
-const APP: &str = "min-height:100vh;background:radial-gradient(circle at 50% -12%,#5eead4 0,#0f766e 38%,#064e3b 100%);color:#111827;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;";
-const SCREEN: &str = "min-height:100vh;max-width:430px;margin:0 auto;background:linear-gradient(180deg,#ecfdf5 0%,#f8fafc 42%,#ecfdf5 100%);position:relative;overflow:hidden;box-shadow:0 30px 80px rgba(6,78,59,0.35),0 0 0 1px rgba(16,185,129,0.14);";
-const HEADER: &str = "height:76px;padding:16px 18px 12px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#ffffff 0%,#f0fdfa 62%,#dcfce7 100%);border-bottom:1px solid rgba(20,184,166,0.18);box-sizing:border-box;box-shadow:0 16px 34px rgba(6,78,59,0.08);";
-const BRAND_WRAP: &str = "display:flex;flex-direction:column;gap:1px;";
-const BRAND: &str = "font-size:21px;font-weight:900;color:#0f172a;letter-spacing:0;";
-const SUBTITLE: &str = "font-size:11px;font-weight:750;color:#0f766e;";
-const ICON_BUTTON: &str = "width:38px;height:38px;border-radius:8px;border:1px solid rgba(20,184,166,0.24);background:rgba(255,255,255,0.78);color:#0f766e;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 24px rgba(6,78,59,0.10);";
-const CONTENT: &str = "position:absolute;top:76px;left:0;right:0;bottom:88px;padding:14px;overflow-y:auto;box-sizing:border-box;";
-const MAP_CARD: &str = "height:378px;position:relative;overflow:hidden;border-radius:8px;background:#d1fae5;border:1px solid rgba(20,184,166,0.22);box-shadow:0 22px 42px rgba(6,78,59,0.18);";
-const ROUTE_MAP_CARD: &str = "height:286px;margin-top:12px;position:relative;overflow:hidden;border-radius:8px;background:#d1fae5;border:1px solid rgba(20,184,166,0.22);box-shadow:0 18px 36px rgba(6,78,59,0.16);";
+const LOGO: Asset = asset!("/assets/jalanaman-logo.png");
+
+const APP: &str = "min-height:100dvh;background:#eaf2ff;color:#111827;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;";
+const SCREEN: &str = "width:100%;min-height:100dvh;background:#f8fbff;position:relative;overflow:hidden;box-shadow:0 0 0 1px rgba(37,99,235,0.12);";
+const HEADER: &str = "height:80px;padding:15px 18px;display:flex;align-items:center;justify-content:space-between;background:#ffffff;border-bottom:1px solid #dbeafe;box-sizing:border-box;box-shadow:0 10px 26px rgba(30,64,175,0.08);";
+const BRAND_WRAP: &str = "display:flex;align-items:center;gap:10px;min-width:0;";
+const BRAND: &str = "font-size:20px;font-weight:900;color:#0f172a;letter-spacing:0;";
+const SUBTITLE: &str = "font-size:11px;font-weight:750;color:#2563eb;";
+const HEADER_LOGO: &str = "width:42px;height:42px;object-fit:contain;flex-shrink:0;filter:drop-shadow(0 7px 12px rgba(37,99,235,0.20));";
+const ICON_BUTTON: &str = "width:42px;height:42px;border-radius:8px;border:1px solid #cbdcfb;background:#ffffff;color:#1d4ed8;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 18px rgba(30,64,175,0.10);";
+const CONTENT: &str = "position:absolute;top:80px;left:0;right:0;bottom:92px;padding:14px;overflow-y:auto;box-sizing:border-box;";
+const MAP_CARD: &str = "height:378px;position:relative;overflow:hidden;border-radius:8px;background:#dbeafe;border:1px solid #bfdbfe;box-shadow:0 18px 38px rgba(30,64,175,0.16);";
+const ROUTE_MAP_CARD: &str = "height:286px;margin-top:12px;position:relative;overflow:hidden;border-radius:8px;background:#dbeafe;border:1px solid #bfdbfe;box-shadow:0 16px 32px rgba(30,64,175,0.14);";
 const MAP_IFRAME: &str =
     "position:absolute;inset:0;width:100%;height:100%;border:0;background:#e0f2fe;";
-const MAP_LABEL: &str = "position:absolute;left:12px;top:12px;max-width:250px;padding:9px 11px;border-radius:8px;background:rgba(255,255,255,0.96);border:1px solid rgba(20,184,166,0.16);color:#0f172a;font-size:12px;font-weight:850;box-shadow:0 12px 26px rgba(6,78,59,0.14);z-index:2;";
-const REPORT_FAB: &str = "position:absolute;right:16px;bottom:16px;width:56px;height:56px;border-radius:12px;border:0;background:linear-gradient(135deg,#10b981,#0f766e);color:#ffffff;font-size:30px;line-height:1;font-weight:900;box-shadow:0 18px 32px rgba(15,118,110,0.36);display:flex;align-items:center;justify-content:center;z-index:2;";
-const MAP_PROVIDER: &str = "position:absolute;left:12px;bottom:14px;padding:7px 9px;border-radius:8px;background:rgba(6,78,59,0.78);color:#ffffff;font-size:10px;font-weight:800;z-index:2;";
-const CARD: &str = "margin-top:12px;background:rgba(255,255,255,0.94);border:1px solid rgba(20,184,166,0.14);border-radius:8px;padding:14px;box-shadow:0 14px 30px rgba(6,78,59,0.10);box-sizing:border-box;backdrop-filter:blur(8px);";
-const CARD_TIGHT: &str = "background:rgba(255,255,255,0.94);border:1px solid rgba(20,184,166,0.14);border-radius:8px;padding:13px;box-shadow:0 14px 30px rgba(6,78,59,0.10);box-sizing:border-box;backdrop-filter:blur(8px);";
+const MAP_LABEL: &str = "position:absolute;left:12px;top:12px;max-width:250px;padding:9px 11px;border-radius:8px;background:rgba(255,255,255,0.96);border:1px solid #cbdcfb;color:#0f172a;font-size:12px;font-weight:850;box-shadow:0 10px 24px rgba(30,64,175,0.14);z-index:2;";
+const REPORT_FAB: &str = "position:absolute;right:16px;bottom:16px;width:56px;height:56px;border-radius:12px;border:0;background:#2563eb;color:#ffffff;font-size:30px;line-height:1;font-weight:900;box-shadow:0 16px 30px rgba(37,99,235,0.34);display:flex;align-items:center;justify-content:center;z-index:2;";
+const MAP_PROVIDER: &str = "position:absolute;left:12px;bottom:14px;padding:7px 9px;border-radius:8px;background:rgba(15,47,109,0.86);color:#ffffff;font-size:10px;font-weight:800;z-index:2;";
+const CARD: &str = "margin-top:12px;background:#ffffff;border:1px solid #dbeafe;border-radius:8px;padding:14px;box-shadow:0 12px 28px rgba(30,64,175,0.09);box-sizing:border-box;";
+const CARD_TIGHT: &str = "background:#ffffff;border:1px solid #dbeafe;border-radius:8px;padding:13px;box-shadow:0 12px 28px rgba(30,64,175,0.09);box-sizing:border-box;";
 const ROW: &str = "display:flex;align-items:center;justify-content:space-between;gap:12px;";
 const EYEBROW: &str = "font-size:11px;color:#64748b;font-weight:750;margin-bottom:3px;";
 const TITLE: &str = "font-size:14px;color:#0f172a;font-weight:850;";
 const BODY: &str = "font-size:12px;color:#64748b;font-weight:650;line-height:1.45;";
 const META_GRID: &str =
     "margin-top:12px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;";
-const META_CELL: &str = "border-radius:8px;background:#f0fdfa;border:1px solid rgba(20,184,166,0.16);padding:10px 8px;min-height:58px;box-sizing:border-box;";
-const META_VALUE: &str = "font-size:14px;font-weight:900;color:#0f766e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+const META_CELL: &str = "border-radius:8px;background:#eff6ff;border:1px solid #bfdbfe;padding:10px 8px;min-height:58px;box-sizing:border-box;";
+const META_VALUE: &str = "font-size:14px;font-weight:900;color:#1d4ed8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
 const META_LABEL: &str = "margin-top:2px;font-size:10px;font-weight:750;color:#64748b;";
 const FIELD_GRID: &str = "display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;";
-const INPUT: &str = "width:100%;box-sizing:border-box;border:1px solid rgba(15,118,110,0.22);background:#ffffff;border-radius:8px;padding:12px 14px;color:#0f172a;font-size:14px;font-weight:650;outline:none;box-shadow:inset 0 1px 0 rgba(255,255,255,0.80);";
-const TEXTAREA: &str = "width:100%;min-height:88px;box-sizing:border-box;border:1px solid rgba(15,118,110,0.22);background:#ffffff;border-radius:8px;padding:12px 14px;color:#0f172a;font-size:14px;font-weight:650;outline:none;resize:none;font-family:inherit;";
-const PRIMARY_BUTTON: &str = "width:100%;margin-top:10px;border:0;border-radius:8px;background:linear-gradient(135deg,#10b981,#0f766e);color:#ffffff;padding:12px 14px;font-size:14px;font-weight:900;box-shadow:0 14px 28px rgba(15,118,110,0.28);";
-const SECONDARY_BUTTON: &str = "width:100%;margin-top:10px;border:1px solid rgba(15,118,110,0.24);border-radius:8px;background:#f0fdfa;color:#0f766e;padding:12px 14px;font-size:14px;font-weight:850;";
+const INPUT: &str = "width:100%;box-sizing:border-box;border:1px solid #cbdcfb;background:#ffffff;border-radius:8px;padding:12px 14px;color:#0f172a;font-size:14px;font-weight:650;outline:none;box-shadow:inset 0 1px 0 rgba(255,255,255,0.80);";
+const TEXTAREA: &str = "width:100%;min-height:88px;box-sizing:border-box;border:1px solid #cbdcfb;background:#ffffff;border-radius:8px;padding:12px 14px;color:#0f172a;font-size:14px;font-weight:650;outline:none;resize:none;font-family:inherit;";
+const PRIMARY_BUTTON: &str = "width:100%;margin-top:10px;border:0;border-radius:8px;background:#2563eb;color:#ffffff;padding:12px 14px;font-size:14px;font-weight:900;box-shadow:0 12px 24px rgba(37,99,235,0.28);";
+const SECONDARY_BUTTON: &str = "width:100%;margin-top:10px;border:1px solid #93c5fd;border-radius:8px;background:#eff6ff;color:#1d4ed8;padding:12px 14px;font-size:14px;font-weight:850;";
 const CATEGORY_GRID: &str = "display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;";
 const CATEGORY_BUTTON: &str = "height:54px;border:1px solid #e5e7eb;border-radius:8px;background:#ffffff;color:#334155;display:flex;align-items:center;gap:8px;padding:0 11px;font-size:12px;font-weight:850;text-align:left;";
-const CATEGORY_BUTTON_ACTIVE: &str = "height:54px;border:1px solid #14b8a6;border-radius:8px;background:#f0fdfa;color:#0f766e;display:flex;align-items:center;gap:8px;padding:0 11px;font-size:12px;font-weight:900;text-align:left;box-shadow:0 8px 18px rgba(15,118,110,0.12);";
-const BOTTOM_BAR: &str = "position:absolute;left:0;right:0;bottom:0;height:88px;background:linear-gradient(180deg,#0f766e 0%,#065f46 100%);border-top:1px solid rgba(209,250,229,0.22);display:grid;grid-template-columns:1fr 1fr 78px 1fr 1fr;align-items:center;padding:8px 10px 12px;box-shadow:0 -18px 38px rgba(6,78,59,0.30);box-sizing:border-box;";
-const NAV_BUTTON: &str = "height:60px;border:0;background:transparent;color:#d1fae5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:10px;font-weight:850;";
-const NAV_BUTTON_ACTIVE: &str = "height:60px;border:0;background:rgba(255,255,255,0.96);color:#0f766e;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:10px;font-weight:950;border-radius:8px;box-shadow:0 12px 26px rgba(6,78,59,0.24);";
+const CATEGORY_BUTTON_ACTIVE: &str = "height:54px;border:1px solid #38bdf8;border-radius:8px;background:#eff6ff;color:#1d4ed8;display:flex;align-items:center;gap:8px;padding:0 11px;font-size:12px;font-weight:900;text-align:left;box-shadow:0 8px 18px rgba(37,99,235,0.12);";
+const BOTTOM_BAR: &str = "position:absolute;left:0;right:0;bottom:0;height:92px;background:#0f3d91;border-top:1px solid #1d4ed8;display:grid;grid-template-columns:1fr 1fr 80px 1fr 1fr;align-items:center;padding:8px 10px 14px;box-shadow:0 -12px 28px rgba(15,47,109,0.24);box-sizing:border-box;";
+const NAV_BUTTON: &str = "height:60px;border:0;background:transparent;color:#dbeafe;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:10px;font-weight:850;";
+const NAV_BUTTON_ACTIVE: &str = "height:60px;border:0;background:#ffffff;color:#1d4ed8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:10px;font-weight:950;border-radius:8px;box-shadow:0 10px 20px rgba(15,47,109,0.26);";
 const NAV_ICON: &str = "width:21px;height:21px;display:block;stroke:currentColor;";
-const SOS_BUTTON: &str = "position:absolute;left:50%;bottom:45px;transform:translateX(-50%);width:66px;height:66px;border-radius:14px;border:5px solid #ecfdf5;background:linear-gradient(135deg,#fb7185,#dc2626);color:#ffffff;font-size:14px;font-weight:950;letter-spacing:0;box-shadow:0 18px 36px rgba(220,38,38,0.38),0 0 0 9px rgba(254,226,226,0.18);display:flex;align-items:center;justify-content:center;";
-const SOS_BUTTON_ACTIVE: &str = "position:absolute;left:50%;bottom:45px;transform:translateX(-50%);width:66px;height:66px;border-radius:14px;border:5px solid #ecfdf5;background:#991b1b;color:#ffffff;font-size:12px;font-weight:950;letter-spacing:0;box-shadow:0 0 0 10px rgba(239,68,68,0.18),0 18px 36px rgba(127,29,29,0.42);display:flex;align-items:center;justify-content:center;";
-const ALERT: &str = "position:absolute;left:18px;right:18px;bottom:100px;border-radius:8px;border:1px solid #fecaca;background:#fff1f2;color:#991b1b;padding:11px 13px;font-size:12px;font-weight:850;box-shadow:0 14px 28px rgba(127,29,29,0.14);z-index:4;";
-const DASHBOARD_WRAP: &str = "min-height:100vh;max-width:430px;margin:0 auto;background:#f8fbff;padding:18px;box-sizing:border-box;color:#0f172a;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;";
-const BACK_LINK: &str = "display:inline-flex;align-items:center;gap:6px;color:#0f766e;text-decoration:none;font-size:13px;font-weight:850;margin-bottom:18px;";
+const SOS_BUTTON: &str = "position:absolute;left:50%;bottom:45px;transform:translateX(-50%);width:66px;height:66px;border-radius:14px;border:5px solid #f8fbff;background:linear-gradient(135deg,#fb7185,#dc2626);color:#ffffff;font-size:14px;font-weight:950;letter-spacing:0;box-shadow:0 18px 36px rgba(220,38,38,0.38),0 0 0 9px rgba(254,226,226,0.18);display:flex;align-items:center;justify-content:center;";
+const SOS_BUTTON_ACTIVE: &str = "position:absolute;left:50%;bottom:45px;transform:translateX(-50%);width:66px;height:66px;border-radius:14px;border:5px solid #f8fbff;background:#991b1b;color:#ffffff;font-size:12px;font-weight:950;letter-spacing:0;box-shadow:0 0 0 10px rgba(239,68,68,0.18),0 18px 36px rgba(127,29,29,0.42);display:flex;align-items:center;justify-content:center;";
+const DASHBOARD_WRAP: &str = "min-height:100dvh;background:#f8fbff;padding:18px;box-sizing:border-box;color:#0f172a;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;";
+const BACK_LINK: &str = "display:inline-flex;align-items:center;gap:6px;color:#1d4ed8;text-decoration:none;font-size:13px;font-weight:850;margin-bottom:18px;";
 const DASH_TITLE: &str =
     "font-size:24px;line-height:1.1;font-weight:900;color:#0f172a;margin:0 0 14px;";
+const MOTION_CSS: &str = r#"
+    @keyframes ja-splash-in { from { opacity:0; transform:scale(.94); } to { opacity:1; transform:scale(1); } }
+    @keyframes ja-logo-float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-7px); } }
+    @keyframes ja-panel-in { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes ja-sos-pulse { 0%,100% { box-shadow:0 0 0 0 rgba(239,68,68,.45); } 60% { box-shadow:0 0 0 16px rgba(239,68,68,0); } }
+    .ja-content { animation:ja-panel-in 320ms ease-out both; }
+    .ja-splash { animation:ja-splash-in 420ms ease-out both; }
+    .ja-splash-logo { animation:ja-logo-float 2.4s ease-in-out infinite; }
+    .ja-sos-active { animation:ja-sos-pulse 1.25s ease-out infinite; }
+"#;
 
 #[component]
 fn Home() -> Element {
     let mut active_tab = use_signal(|| MobileTab::Map);
+    let mut show_splash = use_signal(|| true);
     let mut device_hash = use_signal(String::new);
     let mut location = use_signal(|| Option::<GeoPoint>::None);
     let mut location_loading = use_signal(|| true);
@@ -211,9 +224,15 @@ fn Home() -> Element {
     let mut contacts_error = use_signal(|| Option::<String>::None);
     let mut sos_active = use_signal(|| false);
     let mut sos_msg = use_signal(|| Option::<String>::None);
+    let mut sos_modal_open = use_signal(|| false);
     let mut manual_lat = use_signal(String::new);
     let mut manual_lng = use_signal(String::new);
     let mut manual_location_error = use_signal(|| Option::<String>::None);
+
+    use_future(move || async move {
+        tokio::time::sleep(Duration::from_millis(1450)).await;
+        show_splash.set(false);
+    });
 
     use_effect(move || {
         spawn(async move {
@@ -296,13 +315,11 @@ fn Home() -> Element {
 
     let active_tab_value = *active_tab.read();
     let location_value = *location.read();
-    let is_sos_active = *sos_active.read();
     let report_category_value = *report_category.read();
     let report_note_value = report_note.read().clone();
     let destination_value = destination.read().clone();
     let reports_value = reports.read().clone();
     let contacts_value = contacts.read().clone();
-    let device_hash_value = device_hash.read().clone();
     let directions_value = directions.read().clone();
     let route_score_value = route_score.read().clone();
     let map_html = map_srcdoc(
@@ -314,20 +331,24 @@ fn Home() -> Element {
 
     rsx! {
         main { style: APP,
+            style { {MOTION_CSS} }
             div { style: SCREEN,
                 header { style: HEADER,
                     div { style: BRAND_WRAP,
-                        span { style: BRAND, "JalanAman" }
-                        span { style: SUBTITLE, "Rute aman di sekitar kamu" }
+                        img { src: LOGO, alt: "Logo JalanAman", style: HEADER_LOGO }
+                        div {
+                            div { style: BRAND, "JalanAman" }
+                            div { style: SUBTITLE, "Temukan jalan yang terasa lebih aman" }
+                        }
                     }
                     button {
                         style: ICON_BUTTON,
                         onclick: move |_| active_tab.set(MobileTab::Profile),
-                        "i"
+                        img { src: LOGO, alt: "Akun JalanAman", style: "width:26px;height:26px;object-fit:contain;" }
                     }
                 }
 
-                section { style: CONTENT,
+                section { style: CONTENT, class: "ja-content",
                     if active_tab_value == MobileTab::Map {
                         MapView {
                             map_html,
@@ -491,11 +512,11 @@ fn Home() -> Element {
                                                     directions.set(Some(dirs));
                                                     route_score.set(Some(score));
                                                 }
-                                                Err(err) => {
+                                                Err(_) => {
                                                     let fallback_score = local_route_score(&dirs.polyline, &fallback_reports);
                                                     directions.set(Some(dirs));
                                                     route_score.set(Some(fallback_score));
-                                                    route_error.set(Some(format!("Skor backend belum bisa diambil ({err}). Rute tetap tampil dengan skor sementara dari laporan yang sudah dimuat.")));
+                                                    route_error.set(Some("Rute tetap tampil. Skor sementara dihitung dari laporan di sekitar kamu.".to_string()));
                                                 }
                                             }
                                         }
@@ -520,7 +541,7 @@ fn Home() -> Element {
                                 };
                                 let hash = device_hash.read().clone();
                                 if hash.is_empty() {
-                                    report_error.set(Some("Device ID belum siap. Coba lagi sebentar.".to_string()));
+                                    report_error.set(Some("Aplikasi sedang disiapkan. Coba lagi sebentar.".to_string()));
                                     return;
                                 }
 
@@ -565,7 +586,7 @@ fn Home() -> Element {
                                 let email_text = contact_email.read().trim().to_string();
                                 let phone_text = contact_phone.read().trim().to_string();
                                 if hash.is_empty() {
-                                    contacts_error.set(Some("Device ID belum siap. Coba lagi sebentar.".to_string()));
+                                    contacts_error.set(Some("Aplikasi sedang disiapkan. Coba lagi sebentar.".to_string()));
                                     return;
                                 }
                                 if name.len() < 2 {
@@ -601,7 +622,7 @@ fn Home() -> Element {
                             on_refresh: move |_| {
                                 let hash = device_hash.read().clone();
                                 if hash.is_empty() {
-                                    contacts_error.set(Some("Device ID belum siap. Coba lagi sebentar.".to_string()));
+                                    contacts_error.set(Some("Aplikasi sedang disiapkan. Coba lagi sebentar.".to_string()));
                                     return;
                                 }
                                 contacts_loading.set(true);
@@ -619,8 +640,6 @@ fn Home() -> Element {
                         }
                     } else {
                         ProfileView {
-                            api_base: api_base().to_string(),
-                            device_hash: device_hash_value,
                             location: location_value,
                             report_count: reports.read().len(),
                             contact_count: contacts.read().len(),
@@ -629,10 +648,17 @@ fn Home() -> Element {
                     }
                 }
 
-                if let Some(message) = sos_msg.read().clone() {
-                    div { style: ALERT,
-                        div { style: "font-size:13px;font-weight:950;margin-bottom:2px;", if is_sos_active { "SOS aktif" } else { "SOS" } }
-                        div { "{message}" }
+                if *sos_modal_open.read() {
+                    SosOverlay {
+                        active: *sos_active.read(),
+                        message: sos_msg.read().clone().unwrap_or_else(|| "Kami sedang menyiapkan bantuan untukmu.".to_string()),
+                        on_close: move |_| sos_modal_open.set(false),
+                        on_stop: move |_| {
+                            stop_sos_alarm();
+                            sos_active.set(false);
+                            sos_msg.set(Some("Alarm SOS sudah dihentikan.".to_string()));
+                            sos_modal_open.set(true);
+                        },
                     }
                 }
 
@@ -665,24 +691,28 @@ fn Home() -> Element {
                 }
 
                 button {
-                    style: if is_sos_active { SOS_BUTTON_ACTIVE } else { SOS_BUTTON },
+                    style: if *sos_active.read() { SOS_BUTTON_ACTIVE } else { SOS_BUTTON },
+                    class: if *sos_active.read() { "ja-sos-active" } else { "" },
                     onclick: move |_| {
                         if *sos_active.read() {
                             stop_sos_alarm();
                             sos_active.set(false);
-                            sos_msg.set(Some("Alarm lokal dihentikan.".to_string()));
+                            sos_msg.set(Some("Alarm SOS sudah dihentikan.".to_string()));
+                            sos_modal_open.set(true);
                             return;
                         }
 
                         let point = *location.read();
                         let hash = device_hash.read().clone();
                         if hash.is_empty() {
-                            sos_msg.set(Some("Device ID belum siap. Coba lagi sebentar.".to_string()));
+                            sos_msg.set(Some("Tunggu sebentar, perlindungan SOS sedang disiapkan.".to_string()));
+                            sos_modal_open.set(true);
                             return;
                         }
                         let whatsapp_contacts = contacts.read().clone();
 
-                        sos_msg.set(Some("Mengambil GPS terbaru untuk SOS...".to_string()));
+                        sos_msg.set(Some("Menyiapkan SOS dengan lokasi terkini...".to_string()));
+                        sos_modal_open.set(true);
                         spawn(async move {
                             let point = match point {
                                 Some(point) => point,
@@ -696,32 +726,92 @@ fn Home() -> Element {
                                     }
                                     Err(err) => {
                                         location_error.set(Some(err.clone()));
-                                        sos_msg.set(Some(format!("GPS belum bisa dibaca: {err}. Buka tab Peta lalu tekan Refresh GPS atau isi koordinat manual.")));
+                                        sos_msg.set(Some("Lokasi belum didapatkan. Aktifkan izin lokasi, lalu coba SOS lagi.".to_string()));
                                         return;
                                     }
                                 },
                             };
 
-                            play_sos_alarm();
+                            start_sos_alarm().await;
                             sos_active.set(true);
-                            sos_msg.set(Some("Alarm berbunyi. Mengirim alert dan membuka WhatsApp...".to_string()));
+                            sos_msg.set(Some("Alarm SOS aktif. Lokasi dan permintaan bantuan sedang dikirim ke kontak darurat.".to_string()));
 
-                            let whatsapp_status = match open_whatsapp_sos(&whatsapp_contacts, point).await {
-                                Ok(true) => "WhatsApp dibuka dengan pesan SOS siap kirim. ",
-                                Ok(false) => "Nomor WhatsApp kontak belum ada. ",
-                                Err(_) => "WhatsApp belum bisa dibuka otomatis. ",
-                            };
+                            let whatsapp_opened = open_whatsapp_sos(&whatsapp_contacts, point)
+                                .await
+                                .unwrap_or(false);
 
                             match trigger_sos(&hash, point).await {
-                                Ok(resp) => sos_msg.set(Some(format!(
-                                    "{whatsapp_status}Alert backend terkirim ke {}/{} kontak. Suara tetap aktif sampai STOP.",
-                                    resp.notified_count, resp.total_contacts
-                                ))),
-                                Err(err) => sos_msg.set(Some(format!("{whatsapp_status}Alarm aktif, tapi alert backend gagal: {err}"))),
+                                Ok(_) if whatsapp_opened => sos_msg.set(Some("Permintaan bantuan dikirim. WhatsApp sudah dibuka agar pesan dapat segera dikirim. Alarm tetap aktif sampai dihentikan.".to_string())),
+                                Ok(_) => sos_msg.set(Some("Permintaan bantuan dikirim ke kontak darurat. Alarm tetap aktif sampai dihentikan.".to_string())),
+                                Err(_) => sos_msg.set(Some("Alarm tetap aktif. Pastikan koneksi internet lalu hubungi orang terdekat di sekitarmu.".to_string())),
                             }
                         });
                     },
-                    if is_sos_active { "STOP" } else { "SOS" }
+                    if *sos_active.read() { "STOP" } else { "SOS" }
+                }
+
+                if *show_splash.read() {
+                    LaunchSplash {}
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn LaunchSplash() -> Element {
+    rsx! {
+        div { style: "position:absolute;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:28px;background:linear-gradient(160deg,#eff6ff 0%,#ffffff 55%,#dbeafe 100%);box-sizing:border-box;",
+            div { class: "ja-splash", style: "width:100%;max-width:330px;text-align:center;",
+                div { style: "width:142px;height:142px;margin:0 auto 24px;display:flex;align-items:center;justify-content:center;border-radius:32px;background:#ffffff;border:1px solid #bfdbfe;box-shadow:0 24px 54px rgba(37,99,235,0.20);",
+                    img { class: "ja-splash-logo", src: LOGO, alt: "Logo JalanAman", style: "width:116px;height:116px;object-fit:contain;" }
+                }
+                div { style: "font-size:29px;font-weight:950;color:#0f172a;letter-spacing:0;", "JalanAman" }
+                div { style: "max-width:250px;margin:8px auto 0;color:#475569;font-size:14px;font-weight:700;line-height:1.45;", "Melangkah dengan rasa aman." }
+                div { style: "width:46px;height:4px;margin:28px auto 0;border-radius:99px;background:#2563eb;" }
+            }
+        }
+    }
+}
+
+#[component]
+fn SosOverlay(
+    active: bool,
+    message: String,
+    on_close: EventHandler<MouseEvent>,
+    on_stop: EventHandler<MouseEvent>,
+) -> Element {
+    rsx! {
+        div { style: "position:absolute;inset:0;z-index:45;display:flex;align-items:flex-end;padding:18px 16px 110px;background:rgba(15,23,42,0.48);box-sizing:border-box;",
+            div { class: "ja-splash", style: "width:100%;background:#ffffff;border:1px solid #fecaca;border-radius:8px;box-shadow:0 24px 54px rgba(15,23,42,0.28);overflow:hidden;",
+                div { style: "height:6px;background:#dc2626;" }
+                div { style: "padding:18px;",
+                    div { style: "display:flex;align-items:flex-start;gap:12px;",
+                        div { style: "width:42px;height:42px;border-radius:12px;background:#fff1f2;color:#dc2626;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:950;flex-shrink:0;", "!" }
+                        div { style: "min-width:0;flex:1;",
+                            div { style: "font-size:17px;color:#0f172a;font-weight:950;", if active { "SOS sedang aktif" } else { "Status SOS" } }
+                            div { style: "margin-top:2px;font-size:11px;color:#b91c1c;font-weight:850;", if active { "Alarm dan getaran akan terus aktif sampai dihentikan." } else { "Kamu dapat menutup pemberitahuan ini." } }
+                        }
+                        button {
+                            style: "width:34px;height:34px;border:0;border-radius:8px;background:#f8fafc;color:#475569;font-size:21px;line-height:1;display:flex;align-items:center;justify-content:center;",
+                            onclick: move |event| on_close.call(event),
+                            "×"
+                        }
+                    }
+                    div { style: "margin:16px 0 0;color:#334155;font-size:13px;font-weight:700;line-height:1.55;", "{message}" }
+                    if active {
+                        button {
+                            style: "width:100%;margin-top:18px;border:0;border-radius:8px;background:#dc2626;color:#ffffff;padding:13px 14px;font-size:14px;font-weight:950;box-shadow:0 12px 24px rgba(220,38,38,0.25);",
+                            onclick: move |event| on_stop.call(event),
+                            "Hentikan alarm"
+                        }
+                    } else {
+                        button {
+                            style: "width:100%;margin-top:18px;border:1px solid #bfdbfe;border-radius:8px;background:#eff6ff;color:#1d4ed8;padding:13px 14px;font-size:14px;font-weight:900;",
+                            onclick: move |event| on_close.call(event),
+                            "Tutup"
+                        }
+                    }
                 }
             }
         }
@@ -765,7 +855,7 @@ fn MapView(
                     div { "{title}" }
                     div { style: "margin-top:2px;font-size:10px;color:#64748b;font-weight:750;", "{gps_label}" }
                 }
-                div { style: MAP_PROVIDER, "OpenStreetMap real map" }
+                div { style: MAP_PROVIDER, "Peta langsung" }
                 button {
                     style: REPORT_FAB,
                     title: "Lapor cepat",
@@ -788,7 +878,7 @@ fn MapView(
                         Badge { label: "Fallback".to_string(), bg: "#fef3c7", color: "#92400e" }
                     }
                     div { style: "margin-top:8px;",
-                        div { style: BODY, "GPS WebView Android sedang diblokir di build ini. Tempel lat/lng asli dari Google Maps agar peta laporan, rute, dan SOS tetap memakai lokasi nyata." }
+                        div { style: BODY, "Lokasi belum tersedia. Aktifkan izin lokasi atau masukkan koordinat untuk melanjutkan." }
                     }
                     div { style: FIELD_GRID,
                         input {
@@ -821,7 +911,7 @@ fn MapView(
                         div { style: EYEBROW, "Laporan terdekat" }
                         div { style: TITLE, "{title}" }
                     }
-                    Badge { label: if loading { "Loading".to_string() } else { "Live".to_string() }, bg: "#dcfce7", color: "#166534" }
+                    Badge { label: if loading { "Loading".to_string() } else { "Live".to_string() }, bg: "#dbeafe", color: "#1e40af" }
                 }
                 div { style: "display:flex;flex-direction:column;gap:8px;margin-top:12px;",
                     if reports.is_empty() {
@@ -883,17 +973,17 @@ fn RouteView(
                     oninput: move |event| on_destination.call(event.value()),
                 }
                 if let Some(place) = selected_place {
-                    div { style: "margin-top:9px;display:flex;align-items:center;gap:10px;padding:10px 11px;border:1px solid #99f6e4;border-radius:8px;background:#f0fdfa;",
-                        span { style: "width:24px;height:24px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:50%;background:#0f766e;color:#ffffff;font-size:13px;font-weight:900;", "✓" }
+                    div { style: "margin-top:9px;display:flex;align-items:center;gap:10px;padding:10px 11px;border:1px solid #93c5fd;border-radius:8px;background:#eff6ff;",
+                        span { style: "width:24px;height:24px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:50%;background:#1d4ed8;color:#ffffff;font-size:13px;font-weight:900;", "✓" }
                         div { style: "min-width:0;",
                             div { style: "font-size:12px;color:#0f172a;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;", "{place.name}" }
                             div { style: "margin-top:2px;font-size:10px;color:#64748b;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;", "{place.subtitle}" }
                         }
                     }
                 } else if suggestions_loading {
-                    div { style: "margin-top:10px;padding:10px 2px;color:#0f766e;font-size:12px;font-weight:800;", "Mencari tempat..." }
+                    div { style: "margin-top:10px;padding:10px 2px;color:#1d4ed8;font-size:12px;font-weight:800;", "Mencari tempat..." }
                 } else if !suggestions.is_empty() {
-                    div { style: "margin-top:9px;overflow:hidden;border:1px solid rgba(15,118,110,0.20);border-radius:8px;background:#ffffff;",
+                    div { style: "margin-top:9px;overflow:hidden;border:1px solid rgba(37,99,235,0.20);border-radius:8px;background:#ffffff;",
                         for place in suggestions {
                             {
                                 let place_for_click = place.clone();
@@ -901,7 +991,7 @@ fn RouteView(
                                     button {
                                         style: "width:100%;min-height:58px;padding:10px 11px;border:0;border-bottom:1px solid #e2e8f0;background:#ffffff;color:#0f172a;display:flex;align-items:center;gap:10px;text-align:left;",
                                         onclick: move |_| on_select_place.call(place_for_click.clone()),
-                                        span { style: "width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#ecfdf5;color:#0f766e;font-size:14px;font-weight:900;", "●" }
+                                        span { style: "width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#f8fbff;color:#1d4ed8;font-size:14px;font-weight:900;", "●" }
                                         div { style: "min-width:0;flex:1;",
                                             div { style: "font-size:12px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;", "{place.name}" }
                                             div { style: "margin-top:2px;color:#64748b;font-size:10px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;", "{place.subtitle}" }
@@ -933,7 +1023,7 @@ fn RouteView(
                         srcdoc: "{map_html}",
                         title: "Peta rute aman",
                     }
-                    div { style: MAP_PROVIDER, "OpenStreetMap + OSRM" }
+                    div { style: MAP_PROVIDER, "Rute langsung" }
                 }
             }
 
@@ -946,7 +1036,7 @@ fn RouteView(
                     if let Some(score) = score.clone() {
                         Badge { label: score.level.clone(), bg: level_bg(&score.level), color: level_color(&score.level) }
                     } else {
-                        Badge { label: "Belum dicek".to_string(), bg: "#f0fdfa", color: "#0f766e" }
+                        Badge { label: "Belum dicek".to_string(), bg: "#eff6ff", color: "#1d4ed8" }
                     }
                 }
 
@@ -967,7 +1057,7 @@ fn RouteView(
                     div { style: META_GRID,
                         Metric { value: distance_label(dirs.distance_m), label: "Jarak" }
                         Metric { value: duration_label(dirs.duration_s), label: "Estimasi" }
-                        Metric { value: dirs.provider, label: "Provider" }
+                        Metric { value: "Jalan kaki".to_string(), label: "Mode" }
                     }
                 }
             }
@@ -996,12 +1086,12 @@ fn ReportView(
     let category_soft_color = category.soft_color();
     let category_label = category.label();
     let gps_badge_bg = if location.is_some() {
-        "#dcfce7"
+        "#dbeafe"
     } else {
         "#fee2e2"
     };
     let gps_badge_color = if location.is_some() {
-        "#166534"
+        "#1e40af"
     } else {
         "#991b1b"
     };
@@ -1150,20 +1240,15 @@ fn ContactsView(
 
 #[component]
 fn ProfileView(
-    api_base: String,
-    device_hash: String,
     location: Option<GeoPoint>,
     report_count: usize,
     contact_count: usize,
     location_error: Option<String>,
 ) -> Element {
-    let gps = location
-        .map(|point| format!("{:.5}, {:.5}", point.lat, point.lng))
-        .unwrap_or_else(|| "Belum tersedia".to_string());
-    let device = if device_hash.is_empty() {
-        "Memuat device ID".to_string()
+    let location_status = if location.is_some() {
+        "Lokasi aktif".to_string()
     } else {
-        short_hash(&device_hash)
+        "Menunggu izin lokasi".to_string()
     };
 
     rsx! {
@@ -1171,33 +1256,25 @@ fn ProfileView(
             div { style: CARD,
                 div { style: ROW,
                     div {
-                        div { style: EYEBROW, "Device" }
-                        div { style: TITLE, "Anonim via device ID" }
+                        div { style: EYEBROW, "Akun & privasi" }
+                        div { style: TITLE, "Kamu tetap anonim" }
                     }
-                    Badge { label: "Aktif".to_string(), bg: "#dcfce7", color: "#166534" }
+                    Badge { label: "Terlindungi".to_string(), bg: "#dbeafe", color: "#1e40af" }
                 }
                 div { style: META_GRID,
-                    Metric { value: device, label: "Device" }
-                    Metric { value: report_count.to_string(), label: "Laporan" }
-                    Metric { value: contact_count.to_string(), label: "Kontak" }
+                    Metric { value: location_status, label: "Lokasi" }
+                    Metric { value: report_count.to_string(), label: "Di sekitar" }
+                    Metric { value: contact_count.to_string(), label: "Kontak SOS" }
                 }
             }
 
             div { style: CARD,
-                div { style: EYEBROW, "Koneksi" }
-                StatusRow { label: "Backend API", value: api_base }
-                StatusRow { label: "GPS", value: gps }
-                if let Some(err) = location_error {
-                    Notice { message: err, danger: true }
+                div { style: EYEBROW, "Pengaturan keamanan" }
+                StatusRow { label: "Peta sekitar", value: "Aktif".to_string() }
+                StatusRow { label: "Peringatan SOS", value: "Siap digunakan".to_string() }
+                if location_error.is_some() {
+                    Notice { message: "Lokasi belum tersedia. Aktifkan izin lokasi agar peta dan SOS bekerja akurat.".to_string(), danger: true }
                 }
-            }
-
-            div { style: CARD,
-                div { style: EYEBROW, "Status layanan" }
-                StatusRow { label: "Peta laporan", value: "Backend + OpenStreetMap".to_string() }
-                StatusRow { label: "Lapor cepat", value: "POST /reports".to_string() }
-                StatusRow { label: "Skor rute", value: "Directions + route-score".to_string() }
-                StatusRow { label: "SOS", value: "Email + WhatsApp + alarm lokal".to_string() }
             }
         }
     }
@@ -1308,12 +1385,12 @@ fn ContactRow(contact: EmergencyContact) -> Element {
     let status_bg = if status == "Menunggu" {
         "#fef3c7"
     } else {
-        "#dcfce7"
+        "#dbeafe"
     };
     let status_color = if status == "Menunggu" {
         "#92400e"
     } else {
-        "#166534"
+        "#1e40af"
     };
 
     rsx! {
@@ -1352,7 +1429,7 @@ fn Notice(message: String, danger: bool) -> Element {
     let style = if danger {
         "margin-top:10px;border-radius:8px;border:1px solid #fecaca;background:#fff1f2;color:#991b1b;padding:10px 11px;font-size:12px;font-weight:800;line-height:1.4;"
     } else {
-        "margin-top:10px;border-radius:8px;border:1px solid #99f6e4;background:#f0fdfa;color:#0f766e;padding:10px 11px;font-size:12px;font-weight:800;line-height:1.4;"
+        "margin-top:10px;border-radius:8px;border:1px solid #93c5fd;background:#eff6ff;color:#1d4ed8;padding:10px 11px;font-size:12px;font-weight:800;line-height:1.4;"
     };
 
     rsx! { div { style: "{style}", "{message}" } }
@@ -1363,7 +1440,7 @@ fn StatusRow(label: &'static str, value: String) -> Element {
     rsx! {
         div { style: "display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #eef2ff;",
             span { style: "font-size:12px;font-weight:800;color:#334155;", "{label}" }
-            span { style: "font-size:12px;font-weight:900;color:#0f766e;text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;", "{value}" }
+            span { style: "font-size:12px;font-weight:900;color:#1d4ed8;text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;", "{value}" }
         }
     }
 }
@@ -1527,14 +1604,14 @@ fn normalize_location_error(message: String) -> String {
     let lower = message.to_lowercase();
 
     if lower.contains("only secure origins") {
-        return "GPS Android WebView diblokir di build ini. Isi koordinat manual dulu untuk lanjut memakai laporan, rute, dan SOS.".to_string();
+        return "Lokasi belum dapat dibaca. Aktifkan izin lokasi, lalu coba lagi.".to_string();
     }
 
     if lower.contains("permission") || lower.contains("denied") || lower.contains("ditolak") {
-        return "Izin lokasi belum aktif. Beri permission lokasi ke aplikasi atau isi koordinat manual di tab Peta.".to_string();
+        return "Izin lokasi belum aktif. Izinkan lokasi untuk JalanAman, lalu coba lagi.".to_string();
     }
 
-    message
+    "Lokasi belum tersedia. Pastikan GPS dan koneksi internet aktif, lalu coba lagi.".to_string()
 }
 
 fn normalize_whatsapp_phone(value: &str) -> Option<String> {
@@ -1601,38 +1678,61 @@ async fn open_whatsapp_sos(contacts: &[EmergencyContact], point: GeoPoint) -> Re
     bool::deserialize(&value).map_err(|err| err.to_string())
 }
 
-fn play_sos_alarm() {
-    spawn(async {
-        let _ = document::eval(
-            r#"
-            if (navigator.vibrate) navigator.vibrate([800, 200, 800, 200, 800, 200, 800]);
+async fn start_sos_alarm() {
+    let _ = document::eval(
+        r#"
+            let nativeStarted = false;
             try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                const freqs = [880, 440, 880, 440, 880, 440, 880, 440];
-                freqs.forEach((freq, i) => {
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
-                    osc.type = 'square';
-                    osc.frequency.value = freq;
-                    gain.gain.value = 0.45;
-                    osc.connect(gain);
-                    gain.connect(ctx.destination);
-                    const t = ctx.currentTime + i * 0.42;
-                    osc.start(t);
-                    osc.stop(t + 0.34);
-                });
+                if (window.JalanAmanNative && window.JalanAmanNative.startSosAlarmJson) {
+                    const result = JSON.parse(window.JalanAmanNative.startSosAlarmJson());
+                    nativeStarted = !!result.ok;
+                }
             } catch (_) {}
+
+            if (!nativeStarted) {
+                window.__jalanAmanSosAlarm = window.__jalanAmanSosAlarm || {};
+                const alarm = window.__jalanAmanSosAlarm;
+                if (alarm.timer) clearInterval(alarm.timer);
+                const ring = () => {
+                    try {
+                        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                        const now = ctx.currentTime;
+                        [880, 660, 880].forEach((freq, i) => {
+                            const osc = ctx.createOscillator();
+                            const gain = ctx.createGain();
+                            osc.type = 'square';
+                            osc.frequency.value = freq;
+                            gain.gain.value = 0.38;
+                            osc.connect(gain);
+                            gain.connect(ctx.destination);
+                            osc.start(now + i * 0.24);
+                            osc.stop(now + i * 0.24 + 0.18);
+                        });
+                    } catch (_) {}
+                    if (navigator.vibrate) navigator.vibrate([700, 180, 700, 180, 700]);
+                };
+                ring();
+                alarm.timer = setInterval(ring, 1900);
+            }
             return true;
             "#,
-        )
-        .await;
-    });
+    )
+    .await;
 }
 
 fn stop_sos_alarm() {
     spawn(async {
         let _ = document::eval(
             r#"
+            try {
+                if (window.JalanAmanNative && window.JalanAmanNative.stopSosAlarmJson) {
+                    window.JalanAmanNative.stopSosAlarmJson();
+                }
+            } catch (_) {}
+            if (window.__jalanAmanSosAlarm && window.__jalanAmanSosAlarm.timer) {
+                clearInterval(window.__jalanAmanSosAlarm.timer);
+                window.__jalanAmanSosAlarm.timer = null;
+            }
             if (navigator.vibrate) navigator.vibrate(0);
             return true;
             "#,
@@ -1740,26 +1840,22 @@ async fn request_json<T>(request: reqwest::RequestBuilder) -> Result<T, String>
 where
     T: serde::de::DeserializeOwned,
 {
-    let response = request.send().await.map_err(|err| err.to_string())?;
+    let response = request
+        .send()
+        .await
+        .map_err(|_| "Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.".to_string())?;
     let status = response.status();
 
     if status.is_success() {
-        return response.json::<T>().await.map_err(|err| err.to_string());
+        return response
+            .json::<T>()
+            .await
+            .map_err(|_| "Data belum dapat dimuat. Coba lagi sebentar.".to_string());
     }
 
-    let body = response.text().await.unwrap_or_default();
-    let message = serde_json::from_str::<serde_json::Value>(&body)
-        .ok()
-        .and_then(|value| {
-            value
-                .get("error")
-                .and_then(|error| error.as_str())
-                .map(ToString::to_string)
-        })
-        .filter(|text| !text.is_empty())
-        .unwrap_or(body);
-
-    Err(format!("HTTP {status}: {message}"))
+    let _ = response.text().await;
+    let _ = status;
+    Err("Permintaan belum dapat diproses. Coba lagi sebentar.".to_string())
 }
 
 fn api_url(path: &str) -> String {
@@ -1811,8 +1907,8 @@ fn map_srcdoc(
     #fallback strong { font-size:14px; font-weight:900; }
     #fallback span { max-width:220px; font-size:11px; font-weight:700; line-height:1.4; color:#475569; }
     .pin { position:absolute; width:24px; height:24px; margin:-12px 0 0 -12px; border-radius:50%; border:3px solid #fff; box-shadow:0 10px 18px rgba(15,23,42,.25); display:flex; align-items:center; justify-content:center; color:#fff; font:900 11px system-ui; }
-    .me { position:absolute; width:18px; height:18px; margin:-9px 0 0 -9px; border-radius:50%; background:#0f766e; border:3px solid #fff; box-shadow:0 0 0 14px rgba(15,118,110,.17),0 10px 22px rgba(15,23,42,.26); }
-    .route-end { position:absolute; width:28px; height:28px; margin:-28px 0 0 -14px; border-radius:9px 9px 9px 2px; transform:rotate(-45deg); background:#0f766e; border:3px solid #fff; box-shadow:0 12px 22px rgba(15,23,42,.25); display:flex; align-items:center; justify-content:center; }
+    .me { position:absolute; width:18px; height:18px; margin:-9px 0 0 -9px; border-radius:50%; background:#1d4ed8; border:3px solid #fff; box-shadow:0 0 0 14px rgba(37,99,235,.17),0 10px 22px rgba(15,23,42,.26); }
+    .route-end { position:absolute; width:28px; height:28px; margin:-28px 0 0 -14px; border-radius:9px 9px 9px 2px; transform:rotate(-45deg); background:#1d4ed8; border:3px solid #fff; box-shadow:0 12px 22px rgba(15,23,42,.25); display:flex; align-items:center; justify-content:center; }
     .route-end span { transform:rotate(45deg); color:#fff; font:900 12px system-ui; }
   </style>
 </head>
@@ -1821,7 +1917,7 @@ fn map_srcdoc(
   <div id="tiles"></div>
   <svg id="overlay"></svg>
   <div id="points"></div>
-  <div id="fallback"><strong>Memuat peta real</strong><span>OpenStreetMap sedang mengambil tile jalan sekitar kamu.</span></div>
+  <div id="fallback"><strong>Memuat peta</strong><span>Menyiapkan jalan dan laporan di sekitarmu.</span></div>
 </div>
 <script>
 const locationPoint = __LOCATION__;
@@ -1838,7 +1934,7 @@ function showFallback(title, body) {
   fallback.innerHTML = `<strong>${title}</strong><span>${body}</span>`;
 }
 const colors = { lighting:'#f59e0b', crime:'#ef4444', accident:'#f97316', other:'#64748b' };
-const levelColors = { Aman:'#22c55e', Waspada:'#f59e0b', Hindari:'#ef4444' };
+const levelColors = { Aman:'#3b82f6', Waspada:'#f59e0b', Hindari:'#ef4444' };
 const firstReport = reports[0];
 const tileSize = 256;
 
@@ -1925,7 +2021,7 @@ function drawRoute(centerPx, width, height, zoomLevel) {
     const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
     polyline.setAttribute('points', points);
     polyline.setAttribute('fill', 'none');
-    polyline.setAttribute('stroke', levelColors[routeLevel] || '#0f766e');
+    polyline.setAttribute('stroke', levelColors[routeLevel] || '#1d4ed8');
     polyline.setAttribute('stroke-width', '7');
     polyline.setAttribute('stroke-linecap', 'round');
     polyline.setAttribute('stroke-linejoin', 'round');
@@ -1973,7 +2069,7 @@ function renderMap() {
       img.onerror = () => {
         failed += 1;
         if (failed >= total && loaded === 0) {
-          showFallback('Peta belum termuat', 'Tile OpenStreetMap gagal dimuat. Cek koneksi internet HP.');
+          showFallback('Peta belum termuat', 'Cek koneksi internet lalu coba refresh peta.');
         }
       };
       tilesEl.appendChild(img);
@@ -1992,14 +2088,14 @@ function renderMap() {
   });
 
   setTimeout(() => {
-    if (loaded === 0) showFallback('Peta belum termuat', 'Tile OpenStreetMap belum masuk. Cek koneksi internet HP.');
+    if (loaded === 0) showFallback('Peta belum termuat', 'Cek koneksi internet lalu coba refresh peta.');
   }, 6000);
 }
 
 try {
   renderMap();
 } catch (_) {
-  showFallback('Peta belum termuat', 'Renderer tile OpenStreetMap gagal dimuat di WebView HP.');
+  showFallback('Peta belum termuat', 'Cek koneksi internet lalu coba refresh peta.');
 }
 </script>
 </body>
@@ -2077,7 +2173,7 @@ fn distance_to_route_segment_m(lat: f64, lng: f64, a: &Waypoint, b: &Waypoint) -
 
 fn level_bg(level: &str) -> &'static str {
     match level {
-        "Aman" => "#dcfce7",
+        "Aman" => "#dbeafe",
         "Waspada" => "#fef3c7",
         _ => "#fee2e2",
     }
@@ -2085,7 +2181,7 @@ fn level_bg(level: &str) -> &'static str {
 
 fn level_color(level: &str) -> &'static str {
     match level {
-        "Aman" => "#166534",
+        "Aman" => "#1e40af",
         "Waspada" => "#92400e",
         _ => "#991b1b",
     }
@@ -2116,23 +2212,6 @@ fn haversine_m(lat1: f64, lng1: f64, lat2: f64, lng2: f64) -> f64 {
     let lat2 = lat2.to_radians();
     let a = (d_lat / 2.0).sin().powi(2) + lat1.cos() * lat2.cos() * (d_lng / 2.0).sin().powi(2);
     radius * 2.0 * a.sqrt().atan2((1.0 - a).sqrt())
-}
-
-fn short_hash(value: &str) -> String {
-    let len = value.chars().count();
-    if len <= 12 {
-        return value.to_string();
-    }
-    let start: String = value.chars().take(8).collect();
-    let end: String = value
-        .chars()
-        .rev()
-        .take(4)
-        .collect::<String>()
-        .chars()
-        .rev()
-        .collect();
-    format!("{start}...{end}")
 }
 
 fn parse_manual_location(lat_text: &str, lng_text: &str) -> Result<GeoPoint, String> {

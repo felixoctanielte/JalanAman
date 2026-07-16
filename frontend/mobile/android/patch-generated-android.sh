@@ -8,6 +8,7 @@ MANIFEST="$ANDROID_APP_DIR/app/src/main/AndroidManifest.xml"
 WEB_VIEW="$ANDROID_APP_DIR/app/src/main/kotlin/dev/dioxus/main/RustWebView.kt"
 WEB_CHROME_CLIENT="$ANDROID_APP_DIR/app/src/main/kotlin/dev/dioxus/main/RustWebChromeClient.kt"
 LOCATION_BRIDGE="$ANDROID_APP_DIR/app/src/main/kotlin/dev/dioxus/main/JalanAmanLocationBridge.kt"
+SOS_SERVICE="$ANDROID_APP_DIR/app/src/main/kotlin/dev/dioxus/main/SosAlarmService.kt"
 
 if [ ! -f "$MANIFEST" ]; then
   echo "Android generated manifest belum ada, skip patch permission."
@@ -39,6 +40,27 @@ add_permission "ACCESS_FINE_LOCATION"
 add_permission "ACCESS_NETWORK_STATE"
 add_permission "POST_NOTIFICATIONS"
 add_permission "VIBRATE"
+add_permission "FOREGROUND_SERVICE"
+add_permission "FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+
+add_sos_service() {
+  local tmp_manifest
+
+  if grep -q 'SosAlarmService' "$MANIFEST"; then
+    return
+  fi
+
+  tmp_manifest="$(mktemp)"
+  awk '
+    /<\/application>/ {
+      print "        <service android:name=\"dev.dioxus.main.SosAlarmService\" android:exported=\"false\" android:foregroundServiceType=\"mediaPlayback\" />"
+    }
+    { print }
+  ' "$MANIFEST" > "$tmp_manifest"
+  mv "$tmp_manifest" "$MANIFEST"
+}
+
+add_sos_service
 
 if [ -f "$WEB_CHROME_CLIENT" ]; then
   sed -i '/super\.onGeolocationPermissionsShowPrompt(origin, callback)/d' "$WEB_CHROME_CLIENT"
@@ -110,6 +132,33 @@ class JalanAmanLocationBridge(private val context: Context) {
       JSONObject().put("ok", false).put("error", "WhatsApp tidak ditemukan.").toString()
     } catch (ex: Exception) {
       JSONObject().put("ok", false).put("error", ex.message ?: "Gagal membuka WhatsApp.").toString()
+    }
+  }
+
+  @JavascriptInterface
+  fun startSosAlarmJson(): String {
+    return try {
+      requestRuntimePermissionsIfPossible()
+      val intent = Intent(context, SosAlarmService::class.java).setAction(SosAlarmService.ACTION_START)
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        context.startForegroundService(intent)
+      } else {
+        context.startService(intent)
+      }
+      JSONObject().put("ok", true).toString()
+    } catch (ex: Exception) {
+      JSONObject().put("ok", false).put("error", ex.message ?: "Alarm SOS tidak dapat dimulai.").toString()
+    }
+  }
+
+  @JavascriptInterface
+  fun stopSosAlarmJson(): String {
+    return try {
+      val intent = Intent(context, SosAlarmService::class.java).setAction(SosAlarmService.ACTION_STOP)
+      context.startService(intent)
+      JSONObject().put("ok", true).toString()
+    } catch (ex: Exception) {
+      JSONObject().put("ok", false).put("error", ex.message ?: "Alarm SOS tidak dapat dihentikan.").toString()
     }
   }
 
@@ -188,6 +237,137 @@ class JalanAmanLocationBridge(private val context: Context) {
     return providers.distinct().filter { provider ->
       runCatching { manager.isProviderEnabled(provider) }.getOrDefault(false)
     }
+  }
+}
+KOTLIN
+
+cat > "$SOS_SERVICE" <<'KOTLIN'
+package dev.dioxus.main
+
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
+import android.content.Intent
+import android.media.AudioAttributes
+import android.media.MediaPlayer
+import android.media.RingtoneManager
+import android.os.Build
+import android.os.IBinder
+import android.os.VibrationEffect
+import android.os.Vibrator
+
+class SosAlarmService : Service() {
+  companion object {
+    const val ACTION_START = "dev.dioxus.main.SOS_START"
+    const val ACTION_STOP = "dev.dioxus.main.SOS_STOP"
+    private const val CHANNEL_ID = "jalanaman_sos_alarm"
+    private const val NOTIFICATION_ID = 6202
+  }
+
+  private var player: MediaPlayer? = null
+  private var vibrator: Vibrator? = null
+
+  override fun onBind(intent: Intent?): IBinder? = null
+
+  override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    if (intent?.action == ACTION_STOP) {
+      stopAlarm()
+      @Suppress("DEPRECATION")
+      stopForeground(true)
+      stopSelf()
+      return START_NOT_STICKY
+    }
+
+    startForeground(NOTIFICATION_ID, buildNotification())
+    startAlarm()
+    return START_STICKY
+  }
+
+  override fun onDestroy() {
+    stopAlarm()
+    super.onDestroy()
+  }
+
+  private fun buildNotification(): Notification {
+    val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      val channel = NotificationChannel(
+        CHANNEL_ID,
+        "Alarm SOS JalanAman",
+        NotificationManager.IMPORTANCE_HIGH,
+      ).apply {
+        description = "Peringatan SOS yang sedang aktif"
+        setSound(null, null)
+        enableVibration(false)
+      }
+      manager.createNotificationChannel(channel)
+    }
+
+    val stopIntent = Intent(this, SosAlarmService::class.java).setAction(ACTION_STOP)
+    val stopPendingIntent = PendingIntent.getService(
+      this,
+      1,
+      stopIntent,
+      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+    val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      Notification.Builder(this, CHANNEL_ID)
+    } else {
+      Notification.Builder(this)
+    }
+
+    return builder
+      .setSmallIcon(android.R.drawable.ic_dialog_alert)
+      .setContentTitle("SOS JalanAman aktif")
+      .setContentText("Alarm sedang berbunyi. Tekan Hentikan untuk mematikan.")
+      .setCategory(Notification.CATEGORY_ALARM)
+      .setOngoing(true)
+      .setOnlyAlertOnce(true)
+      .addAction(Notification.Action.Builder(null, "Hentikan", stopPendingIntent).build())
+      .build()
+  }
+
+  private fun startAlarm() {
+    if (player == null) {
+      val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+        ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+      player = MediaPlayer().apply {
+        setAudioAttributes(
+          AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_ALARM)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build(),
+        )
+        setDataSource(this@SosAlarmService, alarmUri)
+        isLooping = true
+        prepare()
+        start()
+      }
+    }
+
+    vibrator = getSystemService(VIBRATOR_SERVICE) as? Vibrator
+    vibrator?.let { deviceVibrator ->
+      if (!deviceVibrator.hasVibrator()) return@let
+      val pattern = longArrayOf(0, 800, 220, 800, 220)
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        deviceVibrator.vibrate(VibrationEffect.createWaveform(pattern, 0))
+      } else {
+        @Suppress("DEPRECATION")
+        deviceVibrator.vibrate(pattern, 0)
+      }
+    }
+  }
+
+  private fun stopAlarm() {
+    vibrator?.cancel()
+    vibrator = null
+    player?.runCatching {
+      if (isPlaying) stop()
+      release()
+    }
+    player = null
   }
 }
 KOTLIN
