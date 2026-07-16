@@ -48,6 +48,14 @@ pub struct DirectionsResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PlaceSuggestion {
+    pub name: String,
+    pub subtitle: String,
+    pub lat: f64,
+    pub lng: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RouteScoreResponse {
     pub score: f64,
     pub level: String, // "Aman" | "Waspada" | "Hindari"

@@ -1,7 +1,7 @@
 use axum::{extract::Query, Json};
 use reqwest::header::{HeaderMap, HeaderValue, USER_AGENT};
 use serde::{Deserialize, Serialize};
-use std::env;
+use std::{collections::HashSet, env, time::Duration};
 
 use crate::error::AppError;
 
@@ -20,6 +20,13 @@ pub struct DirectionsParams {
     pub mode: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct PlaceSearchParams {
+    pub q: String,
+    pub lat: Option<f64>,
+    pub lng: Option<f64>,
+}
+
 #[derive(Debug, Serialize, Clone, PartialEq)]
 pub struct Waypoint {
     pub lat: f64,
@@ -35,6 +42,14 @@ pub struct DirectionsResponse {
     pub distance_m: f64,
     pub duration_s: f64,
     pub provider: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PlaceSuggestion {
+    pub name: String,
+    pub subtitle: String,
+    pub lat: f64,
+    pub lng: f64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -57,11 +72,24 @@ struct PhotonResponse {
 #[derive(Debug, Deserialize)]
 struct PhotonFeature {
     geometry: PhotonGeometry,
+    #[serde(default)]
+    properties: PhotonProperties,
 }
 
 #[derive(Debug, Deserialize)]
 struct PhotonGeometry {
     coordinates: Vec<f64>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct PhotonProperties {
+    name: Option<String>,
+    street: Option<String>,
+    housenumber: Option<String>,
+    district: Option<String>,
+    city: Option<String>,
+    state: Option<String>,
+    country: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -96,6 +124,7 @@ pub async fn get_directions(
 
     let client = reqwest::Client::builder()
         .default_headers(default_headers()?)
+        .timeout(Duration::from_secs(12))
         .build()
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
@@ -136,6 +165,36 @@ pub async fn get_directions(
         duration_s: route.duration,
         provider: format!("{} + OSRM", destination_point.provider),
     }))
+}
+
+pub async fn search_places(
+    Query(params): Query<PlaceSearchParams>,
+) -> Result<Json<Vec<PlaceSuggestion>>, AppError> {
+    let query = params.q.trim();
+    if query.len() < 2 {
+        return Err(AppError::BadRequest(
+            "Pencarian minimal 2 karakter".to_string(),
+        ));
+    }
+
+    match (params.lat, params.lng) {
+        (Some(lat), Some(lng)) => validate_origin(lat, lng)?,
+        (None, None) => {}
+        _ => {
+            return Err(AppError::BadRequest(
+                "Koordinat pencarian tidak lengkap".to_string(),
+            ))
+        }
+    }
+
+    let client = reqwest::Client::builder()
+        .default_headers(default_headers()?)
+        .timeout(Duration::from_secs(8))
+        .build()
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+    let places = search_places_with_photon(&client, query, params.lat.zip(params.lng)).await?;
+
+    Ok(Json(places))
 }
 
 fn default_headers() -> Result<HeaderMap, AppError> {
@@ -180,7 +239,7 @@ async fn geocode_destination(
     if let Some(point) = parse_coordinate_destination(destination)? {
         return Ok(GeocodedDestination {
             point,
-            provider: "Koordinat manual".to_string(),
+            provider: "Lokasi dipilih".to_string(),
         });
     }
 
@@ -291,6 +350,103 @@ async fn geocode_with_photon(
         lat: *lat,
         lng: *lng,
     })
+}
+
+async fn search_places_with_photon(
+    client: &reqwest::Client,
+    query: &str,
+    bias: Option<(f64, f64)>,
+) -> Result<Vec<PlaceSuggestion>, AppError> {
+    let mut parameters = vec![
+        ("q", query.to_string()),
+        ("limit", "6".to_string()),
+        ("lang", "en".to_string()),
+    ];
+    if let Some((lat, lng)) = bias {
+        parameters.push(("lat", lat.to_string()));
+        parameters.push(("lon", lng.to_string()));
+    }
+
+    let response = client
+        .get(PHOTON_URL)
+        .query(&parameters)
+        .send()
+        .await
+        .map_err(|e| AppError::Internal(format!("Pencarian tempat gagal: {e}")))?;
+    let status = response.status();
+    if !status.is_success() {
+        return Err(AppError::Internal(format!(
+            "Pencarian tempat sementara tidak tersedia (HTTP {status})"
+        )));
+    }
+
+    let data = response
+        .json::<PhotonResponse>()
+        .await
+        .map_err(|e| AppError::Internal(format!("Hasil pencarian tempat tidak valid: {e}")))?;
+    let mut seen = HashSet::new();
+    let places = data
+        .features
+        .into_iter()
+        .filter_map(|feature| photon_suggestion(feature, query))
+        .filter(|place| seen.insert(format!("{:.5}:{:.5}:{}", place.lat, place.lng, place.name)))
+        .collect();
+
+    Ok(places)
+}
+
+fn photon_suggestion(feature: PhotonFeature, fallback_name: &str) -> Option<PlaceSuggestion> {
+    let [lng, lat] = feature.geometry.coordinates.as_slice() else {
+        return None;
+    };
+    validate_origin(*lat, *lng).ok()?;
+
+    let properties = feature.properties;
+    let name = non_empty(properties.name.as_deref())
+        .or_else(|| non_empty(properties.city.as_deref()))
+        .or_else(|| non_empty(properties.district.as_deref()))
+        .unwrap_or(fallback_name)
+        .to_string();
+    let mut detail = Vec::new();
+    let street = match (
+        non_empty(properties.street.as_deref()),
+        non_empty(properties.housenumber.as_deref()),
+    ) {
+        (Some(street), Some(number)) => Some(format!("{street} {number}")),
+        (Some(street), None) => Some(street.to_string()),
+        _ => None,
+    };
+    for value in [
+        street.as_deref(),
+        non_empty(properties.district.as_deref()),
+        non_empty(properties.city.as_deref()),
+        non_empty(properties.state.as_deref()),
+        non_empty(properties.country.as_deref()),
+    ] {
+        if let Some(value) = value.filter(|value| !value.eq_ignore_ascii_case(&name)) {
+            if !detail
+                .iter()
+                .any(|part: &String| part.eq_ignore_ascii_case(value))
+            {
+                detail.push(value.to_string());
+            }
+        }
+    }
+
+    Some(PlaceSuggestion {
+        name,
+        subtitle: if detail.is_empty() {
+            "Data OpenStreetMap".to_string()
+        } else {
+            detail.join(", ")
+        },
+        lat: *lat,
+        lng: *lng,
+    })
+}
+
+fn non_empty(value: Option<&str>) -> Option<&str> {
+    value.map(str::trim).filter(|value| !value.is_empty())
 }
 
 fn parse_coordinate_destination(destination: &str) -> Result<Option<Waypoint>, AppError> {

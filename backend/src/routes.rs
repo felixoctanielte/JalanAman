@@ -26,6 +26,7 @@ fn api_routes() -> Router<AppState> {
         .route("/reports/:id/downvote", post(reports::downvote_report))
         // Route safety score
         .route("/directions", get(directions::get_directions))
+        .route("/places", get(directions::search_places))
         .route("/route-score", post(route_score::calculate_route_score))
         // SOS & emergency contacts
         .route("/sos/trigger", post(sos::trigger_sos))

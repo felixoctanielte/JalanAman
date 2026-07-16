@@ -1,7 +1,7 @@
 use dioxus::prelude::*;
 use jalanaman_shared::{
-    AddContactPayload, CreateReportPayload, DirectionsResponse, EmergencyContact, Report,
-    RouteScorePayload, RouteScoreResponse, SosTriggerPayload, SosTriggerResponse, Waypoint,
+    AddContactPayload, CreateReportPayload, DirectionsResponse, EmergencyContact, PlaceSuggestion,
+    Report, RouteScorePayload, RouteScoreResponse, SosTriggerPayload, SosTriggerResponse, Waypoint,
 };
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -198,6 +198,11 @@ fn Home() -> Element {
     let mut route_score = use_signal(|| Option::<RouteScoreResponse>::None);
     let mut route_loading = use_signal(|| false);
     let mut route_error = use_signal(|| Option::<String>::None);
+    let mut place_suggestions = use_signal(Vec::<PlaceSuggestion>::new);
+    let mut place_suggestions_loading = use_signal(|| false);
+    let mut place_suggestions_error = use_signal(|| Option::<String>::None);
+    let mut selected_place = use_signal(|| Option::<PlaceSuggestion>::None);
+    let mut place_search_revision = use_signal(|| 0_u64);
     let mut contacts = use_signal(Vec::<EmergencyContact>::new);
     let mut contact_name = use_signal(String::new);
     let mut contact_email = use_signal(String::new);
@@ -394,9 +399,70 @@ fn Home() -> Element {
                             score: route_score_value,
                             loading: *route_loading.read(),
                             error: route_error.read().clone(),
-                            on_destination: move |value| destination.set(limit_text(value, 80)),
+                            suggestions: place_suggestions.read().clone(),
+                            suggestions_loading: *place_suggestions_loading.read(),
+                            suggestions_error: place_suggestions_error.read().clone(),
+                            selected_place: selected_place.read().clone(),
+                            on_destination: move |value| {
+                                let value = limit_text(value, 80);
+                                let query = value.trim().to_string();
+                                destination.set(value);
+                                selected_place.set(None);
+                                directions.set(None);
+                                route_score.set(None);
+                                route_error.set(None);
+
+                                let revision = (*place_search_revision.peek()).wrapping_add(1);
+                                place_search_revision.set(revision);
+                                if query.len() < 2 {
+                                    place_suggestions.set(Vec::new());
+                                    place_suggestions_loading.set(false);
+                                    place_suggestions_error.set(None);
+                                    return;
+                                }
+
+                                let origin = *location.peek();
+                                place_suggestions_loading.set(true);
+                                place_suggestions_error.set(None);
+                                spawn(async move {
+                                    tokio::time::sleep(Duration::from_millis(350)).await;
+                                    if *place_search_revision.peek() != revision {
+                                        return;
+                                    }
+
+                                    match search_places(&query, origin).await {
+                                        Ok(items) => {
+                                            if *place_search_revision.peek() == revision {
+                                                place_suggestions.set(items);
+                                                place_suggestions_error.set(None);
+                                                place_suggestions_loading.set(false);
+                                            }
+                                        }
+                                        Err(err) => {
+                                            if *place_search_revision.peek() == revision {
+                                                place_suggestions.set(Vec::new());
+                                                place_suggestions_error.set(Some(err));
+                                                place_suggestions_loading.set(false);
+                                            }
+                                        }
+                                    }
+                                });
+                            },
+                            on_select_place: move |place: PlaceSuggestion| {
+                                let revision = (*place_search_revision.peek()).wrapping_add(1);
+                                place_search_revision.set(revision);
+                                destination.set(place.name.clone());
+                                selected_place.set(Some(place));
+                                place_suggestions.set(Vec::new());
+                                place_suggestions_loading.set(false);
+                                place_suggestions_error.set(None);
+                                directions.set(None);
+                                route_score.set(None);
+                                route_error.set(None);
+                            },
                             on_search: move |_| {
                                 let dest = destination.read().trim().to_string();
+                                let selected = selected_place.read().clone();
                                 let point = *location.read();
                                 if dest.len() < 3 {
                                     route_error.set(Some("Tujuan minimal 3 karakter.".to_string()));
@@ -412,9 +478,12 @@ fn Home() -> Element {
                                 directions.set(None);
                                 route_score.set(None);
                                 let fallback_reports = reports.read().clone();
+                                let route_target = selected
+                                    .map(|place| format!("{:.7},{:.7}", place.lat, place.lng))
+                                    .unwrap_or(dest);
 
                                 spawn(async move {
-                                    match get_directions(origin, &dest).await {
+                                    match get_directions(origin, &route_target).await {
                                         Err(err) => route_error.set(Some(err)),
                                         Ok(dirs) => {
                                             match calculate_route_score(dirs.polyline.clone()).await {
@@ -793,7 +862,12 @@ fn RouteView(
     score: Option<RouteScoreResponse>,
     loading: bool,
     error: Option<String>,
+    suggestions: Vec<PlaceSuggestion>,
+    suggestions_loading: bool,
+    suggestions_error: Option<String>,
+    selected_place: Option<PlaceSuggestion>,
     on_destination: EventHandler<String>,
+    on_select_place: EventHandler<PlaceSuggestion>,
     on_search: EventHandler<MouseEvent>,
 ) -> Element {
     let has_directions = directions.is_some();
@@ -801,12 +875,44 @@ fn RouteView(
     rsx! {
         div {
             div { style: CARD_TIGHT,
-                div { style: EYEBROW, "Tujuan" }
+                div { style: EYEBROW, "Cari tujuan" }
                 input {
                     style: INPUT,
                     value: "{destination}",
-                    placeholder: "Contoh: Monas Jakarta",
+                    placeholder: "Cari tempat atau alamat",
                     oninput: move |event| on_destination.call(event.value()),
+                }
+                if let Some(place) = selected_place {
+                    div { style: "margin-top:9px;display:flex;align-items:center;gap:10px;padding:10px 11px;border:1px solid #99f6e4;border-radius:8px;background:#f0fdfa;",
+                        span { style: "width:24px;height:24px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:50%;background:#0f766e;color:#ffffff;font-size:13px;font-weight:900;", "✓" }
+                        div { style: "min-width:0;",
+                            div { style: "font-size:12px;color:#0f172a;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;", "{place.name}" }
+                            div { style: "margin-top:2px;font-size:10px;color:#64748b;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;", "{place.subtitle}" }
+                        }
+                    }
+                } else if suggestions_loading {
+                    div { style: "margin-top:10px;padding:10px 2px;color:#0f766e;font-size:12px;font-weight:800;", "Mencari tempat..." }
+                } else if !suggestions.is_empty() {
+                    div { style: "margin-top:9px;overflow:hidden;border:1px solid rgba(15,118,110,0.20);border-radius:8px;background:#ffffff;",
+                        for place in suggestions {
+                            {
+                                let place_for_click = place.clone();
+                                rsx! {
+                                    button {
+                                        style: "width:100%;min-height:58px;padding:10px 11px;border:0;border-bottom:1px solid #e2e8f0;background:#ffffff;color:#0f172a;display:flex;align-items:center;gap:10px;text-align:left;",
+                                        onclick: move |_| on_select_place.call(place_for_click.clone()),
+                                        span { style: "width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#ecfdf5;color:#0f766e;font-size:14px;font-weight:900;", "●" }
+                                        div { style: "min-width:0;flex:1;",
+                                            div { style: "font-size:12px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;", "{place.name}" }
+                                            div { style: "margin-top:2px;color:#64748b;font-size:10px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;", "{place.subtitle}" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else if let Some(search_error) = suggestions_error {
+                    div { style: "margin-top:10px;color:#b45309;font-size:11px;font-weight:800;line-height:1.4;", "{search_error}" }
                 }
                 button {
                     style: PRIMARY_BUTTON,
@@ -1559,6 +1665,20 @@ async fn get_directions(point: GeoPoint, destination: &str) -> Result<Directions
         ("mode", "walking".to_string()),
     ]))
     .await
+}
+
+async fn search_places(
+    query: &str,
+    origin: Option<GeoPoint>,
+) -> Result<Vec<PlaceSuggestion>, String> {
+    let client = reqwest::Client::new();
+    let mut parameters = vec![("q", query.to_string())];
+    if let Some(origin) = origin {
+        parameters.push(("lat", origin.lat.to_string()));
+        parameters.push(("lng", origin.lng.to_string()));
+    }
+
+    request_json(client.get(api_url("/places")).query(&parameters)).await
 }
 
 async fn calculate_route_score(waypoints: Vec<Waypoint>) -> Result<RouteScoreResponse, String> {
