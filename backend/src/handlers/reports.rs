@@ -21,12 +21,11 @@ pub async fn create_report(
 ) -> Result<Json<Report>, AppError> {
     if !VALID_CATEGORIES.contains(&payload.category.as_str()) {
         return Err(AppError::BadRequest(format!(
-            "Kategori tidak valid. Pilih salah satu: {:?}",
-            VALID_CATEGORIES
+            "Kategori tidak valid. Pilih salah satu: {VALID_CATEGORIES:?}"
         )));
     }
 
-    if payload.note.as_ref().map_or(false, |n| n.len() > 100) {
+    if payload.note.as_ref().is_some_and(|n| n.len() > 100) {
         return Err(AppError::BadRequest("Catatan maksimal 100 karakter".into()));
     }
 

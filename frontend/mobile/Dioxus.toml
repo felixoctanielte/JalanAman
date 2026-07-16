@@ -1,0 +1,6 @@
+[application]
+name = "jalanaman-mobile"
+
+[bundle]
+identifier = "com.jalanaman.app"
+publisher  = "JalanAman"

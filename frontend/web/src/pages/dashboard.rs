@@ -1,110 +1,88 @@
 use dioxus::prelude::*;
-use dioxus_router::prelude::*;
-use jalanaman_shared::{Report, category_emoji, category_label};
-use crate::{app::Route, services::api, utils::js};
 
 #[component]
 pub fn Dashboard() -> Element {
-    let mut reports = use_signal(|| Vec::<Report>::new());
-    let mut loading = use_signal(|| true);
+    // State management
+    let mut is_dark = use_signal(|| true);
+    let mut show_gelap = use_signal(|| true);
+    let mut show_rawan = use_signal(|| true);
+    let mut show_kecelakaan = use_signal(|| true);
 
-    use_effect(move || {
-        spawn(async move {
-            if let Ok(r) = api::get_reports(-6.2088, 106.8456, 50_000.0).await {
-                let pts: Vec<_> = r.iter()
-                    .map(|rp| serde_json::json!({"lat": rp.lat, "lng": rp.lng}))
-                    .collect();
-                js::init_heatmap(&serde_json::to_string(&pts).unwrap_or_default());
-                reports.set(r);
-            }
-            loading.set(false);
-        });
-    });
-
-    let crime_ct    = reports.read().iter().filter(|r| r.category == "crime").count();
-    let accident_ct = reports.read().iter().filter(|r| r.category == "accident").count();
-    let lighting_ct = reports.read().iter().filter(|r| r.category == "lighting").count();
-    let other_ct    = reports.read().iter().filter(|r| r.category == "other").count();
-
-    rsx! {
-        div { class: "min-h-screen bg-gray-50",
-
-            div { class: "bg-blue-700 text-white px-4 py-3 flex items-center gap-3 shadow",
-                Link { to: Route::Home {}, class: "text-blue-200 hover:text-white text-sm", "← Kembali" }
-                h1 { class: "font-bold text-lg", "Dashboard Keamanan Wilayah" }
-            }
-
-            div { class: "p-4 max-w-4xl mx-auto",
-
-                // Stat cards
-                div { class: "grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6",
-                    StatCard { icon: "🔴", label: "Rawan Begal",      count: crime_ct,    color: "red" }
-                    StatCard { icon: "🟠", label: "Rawan Kecelakaan", count: accident_ct, color: "orange" }
-                    StatCard { icon: "🟡", label: "Pencahayaan Buruk",count: lighting_ct, color: "yellow" }
-                    StatCard { icon: "⚪", label: "Lainnya",          count: other_ct,    color: "gray" }
-                }
-
-                // Heatmap
-                div { class: "bg-white rounded-2xl shadow overflow-hidden mb-4",
-                    div { class: "px-4 py-3 border-b border-gray-100",
-                        h2 { class: "font-semibold text-gray-700", "Peta Titik Rawan (Heatmap)" }
-                        p  { class: "text-xs text-gray-400 mt-0.5", "Data 30 hari terakhir" }
-                    }
-                    div { class: "relative",
-                        div { id: "map-container", class: "w-full h-96" }
-                        if *loading.read() {
-                            div { class: "absolute inset-0 flex items-center justify-center bg-gray-50/80",
-                                span { class: "text-gray-400 text-sm", "Memuat data heatmap..." }
-                            }
-                        }
-                    }
-                }
-
-                // Recent reports table
-                div { class: "bg-white rounded-2xl shadow overflow-hidden",
-                    div { class: "px-4 py-3 border-b border-gray-100 flex items-center justify-between",
-                        h2 { class: "font-semibold text-gray-700", "Laporan Terbaru" }
-                        span { class: "text-xs text-gray-400", "{reports.read().len()} total" }
-                    }
-                    div { class: "divide-y divide-gray-50 max-h-80 overflow-y-auto",
-                        for r in reports.read().iter().take(50) {
-                            div { class: "px-4 py-3 flex items-start gap-3 hover:bg-gray-50",
-                                span { class: "text-lg flex-shrink-0", "{category_emoji(&r.category)}" }
-                                div { class: "flex-1 min-w-0",
-                                    p { class: "text-sm font-medium text-gray-700", "{category_label(&r.category)}" }
-                                    if let Some(note) = &r.note {
-                                        p { class: "text-xs text-gray-400 truncate", "{note}" }
-                                    }
-                                }
-                                div { class: "text-right flex-shrink-0",
-                                    p { class: "text-xs text-gray-400", "{r.lat:.4}, {r.lng:.4}" }
-                                    div { class: "flex gap-1 justify-end mt-1",
-                                        span { class: "text-xs text-green-600", "▲{r.upvote_count}" }
-                                        span { class: "text-xs text-red-400",   "▼{r.downvote_count}" }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-#[component]
-fn StatCard(icon: &'static str, label: &'static str, count: usize, color: &'static str) -> Element {
-    let (bg, text) = match color {
-        "red"    => ("bg-red-50 border-red-100",       "text-red-700"),
-        "orange" => ("bg-orange-50 border-orange-100", "text-orange-700"),
-        "yellow" => ("bg-yellow-50 border-yellow-100", "text-yellow-700"),
-        _        => ("bg-gray-50 border-gray-100",     "text-gray-700"),
+    // Styling dinamis
+    let page_bg = if is_dark() { "bg-slate-950" } else { "bg-slate-50" };
+    let text_main = if is_dark() { "text-slate-100" } else { "text-slate-900" };
+    let text_muted = if is_dark() { "text-slate-400" } else { "text-slate-500" };
+    
+    // Menggunakan gaya "soft" tanpa border kaku
+    let card_style = if is_dark() { 
+        "bg-slate-900/40 border-slate-800" 
+    } else { 
+        "bg-white border-slate-200" 
     };
+
     rsx! {
-        div { class: "border {bg} rounded-2xl p-4",
-            div { class: "text-2xl mb-1", "{icon}" }
-            div { class: "text-2xl font-black {text}", "{count}" }
-            div { class: "text-xs text-gray-500 mt-0.5", "{label}" }
+        div { class: "min-h-screen w-full {page_bg} p-6 md:p-12 font-sans transition-colors duration-300",
+            
+            // Header: Dibuat lebih lega dengan tipografi kontras
+            div { class: "max-w-6xl mx-auto mb-10 flex justify-between items-center",
+                div {
+                    h1 { class: "text-3xl font-extrabold tracking-tight {text_main}", "Dashboard Keamanan" }
+                    p { class: "text-sm mt-1 {text_muted}", "Memantau situasi wilayah Kel. Sukamaju secara real-time" }
+                },
+                button {
+                    onclick: move |_| is_dark.set(!is_dark()),
+                    class: "px-5 py-2.5 rounded-full text-xs font-bold border border-slate-700/20 hover:scale-105 transition-all {text_main}",
+                    if is_dark() { "☀️ Light Mode" } else { "🌙 Dark Mode" }
+                }
+            },
+
+            // Container Utama: Menggunakan grid untuk layout yang lebih natural
+            div { class: "max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8",
+                
+                // Sidebar Filter
+                div { class: "md:col-span-1 space-y-10",
+                    div { class: "space-y-4",
+                        h2 { class: "text-xs font-bold uppercase tracking-widest {text_muted}", "Kategori Laporan" },
+                        div { class: "space-y-3",
+                            // Checkbox manual agar state mutasi aman (tidak kena borrow error)
+                            label { class: "flex items-center gap-3 cursor-pointer group",
+                                input { "type": "checkbox", checked: show_gelap(), onclick: move |_| show_gelap.set(!show_gelap()), class: "w-5 h-5 rounded border-slate-300 accent-amber-500 cursor-pointer" }
+                                span { class: "text-sm font-medium group-hover:text-blue-500 transition-colors {text_main}", "Gelap" }
+                            },
+                            label { class: "flex items-center gap-3 cursor-pointer group",
+                                input { "type": "checkbox", checked: show_rawan(), onclick: move |_| show_rawan.set(!show_rawan()), class: "w-5 h-5 rounded border-slate-300 accent-red-500 cursor-pointer" }
+                                span { class: "text-sm font-medium group-hover:text-blue-500 transition-colors {text_main}", "Rawan" }
+                            },
+                            label { class: "flex items-center gap-3 cursor-pointer group",
+                                input { "type": "checkbox", checked: show_kecelakaan(), onclick: move |_| show_kecelakaan.set(!show_kecelakaan()), class: "w-5 h-5 rounded border-slate-300 accent-rose-500 cursor-pointer" }
+                                span { class: "text-sm font-medium group-hover:text-blue-500 transition-colors {text_main}", "Kecelakaan" }
+                            }
+                        }
+                    }
+                    
+                    div { class: "space-y-3",
+                        h2 { class: "text-xs font-bold uppercase tracking-widest {text_muted}", "Rentang Waktu" },
+                        select { class: "w-full p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm {text_main}",
+                            option { "30 hari terakhir" }
+                            option { "7 hari terakhir" }
+                            option { "Hari ini" }
+                        }
+                    }
+                },
+
+                // Area Heatmap (dibuat lebih luas & modern)
+                div { class: "md:col-span-3 h-[500px] rounded-3xl shadow-2xl shadow-slate-200/50 dark:shadow-none border border-slate-200/60 dark:border-slate-800/50 {card_style} relative overflow-hidden transition-all duration-500",
+                    if show_rawan() {
+                        div { class: "absolute top-[20%] left-[20%] w-32 h-32 rounded-full bg-red-500/20 blur-3xl animate-pulse" }
+                    },
+                    if show_gelap() {
+                        div { class: "absolute bottom-[30%] left-[40%] w-40 h-40 rounded-full bg-amber-500/20 blur-3xl" }
+                    },
+                    if show_kecelakaan() {
+                        div { class: "absolute bottom-[20%] left-[25%] w-24 h-24 rounded-full bg-rose-600/30 blur-2xl" }
+                    }
+                }
+            }
         }
     }
 }

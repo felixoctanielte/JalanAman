@@ -1,7 +1,7 @@
 //! Pure RSX form – works on web and mobile.
 //! The parent supplies `on_submit` which handles the platform-specific API call.
+use crate::utils::types::{category_emoji, category_label, CreateReportPayload};
 use dioxus::prelude::*;
-use crate::utils::types::{CreateReportPayload, category_emoji, category_label};
 
 #[component]
 pub fn ReportForm(
@@ -15,10 +15,12 @@ pub fn ReportForm(
     on_submit: EventHandler<CreateReportPayload>,
 ) -> Element {
     let mut category = use_signal(|| "crime".to_string());
-    let mut note = use_signal(|| String::new());
+    let mut note = use_signal(String::new);
 
     let handle_submit = move |_evt: FormEvent| {
-        if lat.is_none() || lng.is_none() { return; }
+        if lat.is_none() || lng.is_none() {
+            return;
+        }
         let n = note.read().trim().to_string();
         on_submit.call(CreateReportPayload {
             category: category.read().clone(),

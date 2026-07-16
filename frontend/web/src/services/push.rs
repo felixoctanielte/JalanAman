@@ -1,9 +1,9 @@
 //! Web Push subscription helpers — wraps JS helpers defined in index.html.
+use super::api;
+use crate::utils::device::get_device_hash;
+use jalanaman_shared::SubscribePushPayload;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
-use jalanaman_shared::SubscribePushPayload;
-use crate::utils::device::get_device_hash;
-use super::api;
 
 #[wasm_bindgen]
 extern "C" {
@@ -39,7 +39,7 @@ pub async fn onboard_push(invite_token: &str) -> Result<(), String> {
     let sub_json = JsFuture::from(js_subscribe_push(&cfg.vapid_public_key))
         .await
         .map(|v| v.as_string().unwrap_or_default())
-        .map_err(|e| format!("Push subscription gagal: {:?}", e))?;
+        .map_err(|e| format!("Push subscription gagal: {e:?}"))?;
 
     let sub: serde_json::Value = serde_json::from_str(&sub_json)
         .map_err(|_| "Format subscription tidak valid.".to_string())?;
@@ -48,8 +48,8 @@ pub async fn onboard_push(invite_token: &str) -> Result<(), String> {
         invite_token: invite_token.to_string(),
         contact_device_hash: get_device_hash(),
         push_endpoint: sub["endpoint"].as_str().unwrap_or("").to_string(),
-        push_p256dh:   sub["keys"]["p256dh"].as_str().unwrap_or("").to_string(),
-        push_auth:     sub["keys"]["auth"].as_str().unwrap_or("").to_string(),
+        push_p256dh: sub["keys"]["p256dh"].as_str().unwrap_or("").to_string(),
+        push_auth: sub["keys"]["auth"].as_str().unwrap_or("").to_string(),
     };
 
     api::subscribe_push_backend(&payload).await

@@ -1,7 +1,7 @@
 //! Google Maps component — web-only (uses JS interop).
-use dioxus::prelude::*;
-use jalanaman_shared::{Report, category_emoji};
 use crate::utils::js;
+use dioxus::prelude::*;
+use jalanaman_shared::Report;
 
 #[component]
 pub fn MapView(reports: Vec<Report>) -> Element {

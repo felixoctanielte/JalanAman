@@ -3,10 +3,22 @@ members = [
     "backend",
     "frontend/shared",
     "frontend/web",
-    "frontend/mobile",
+    # mobile dikecualikan dari workspace Linux — build dari direktorinya sendiri
+    # dengan dx serve --platform android/ios (butuh Android SDK / Xcode)
 ]
+exclude = ["frontend/mobile"]
 resolver = "2"
 
 [profile.release]
 opt-level = "z"
 lto       = true
+
+[profile.wasm-dev]
+inherits = "dev"
+opt-level = 1
+
+[profile.server-dev]
+inherits = "dev"
+
+[profile.android-dev]
+inherits = "dev"

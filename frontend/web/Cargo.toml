@@ -3,18 +3,17 @@ name = "jalanaman-web"
 version = "0.1.0"
 edition = "2021"
 
-[lib]
-name       = "jalanaman_web"
-path       = "src/lib.rs"
-crate-type = ["cdylib", "rlib"]
+[[bin]]
+name = "jalanaman-web"
+path = "src/main.rs"
 
 [dependencies]
 # Shared types + components
 jalanaman-shared = { path = "../shared" }
 
 # Dioxus web target
-dioxus        = { version = "0.5", features = ["web"] }
-dioxus-router = "0.5"
+dioxus        = { version = "0.6", features = ["web", "router"] }
+dioxus-router = "0.6"
 
 # Serialisation
 serde      = { version = "1", features = ["derive"] }
@@ -44,8 +43,9 @@ gloo-timers = { version = "0.3", features = ["futures"] }
 # IDs
 uuid = { version = "1", features = ["v4", "js"] }
 
-# Logging
-log         = "0.4"
-console_log = "1"
+# Logging + panic hook
+log                       = "0.4"
+console_log               = "1"
+console_error_panic_hook  = "0.1"
 
 # release profile is set in workspace Cargo.toml

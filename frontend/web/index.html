@@ -10,124 +10,200 @@
   <link rel="manifest" href="/manifest.json" />
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
 
-  <!-- Tailwind CDN (replace with postcss build for production) -->
+  <!-- Tailwind CSS (pre-built via: npx tailwindcss -i assets/tailwind.css -o assets/tw.css) -->
+  <link rel="stylesheet" href="/tailwind.css" />
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Dioxus WASM entry – Trunk replaces this -->
-  <link data-trunk rel="rust" data-wasm-opt="z" />
-  <link data-trunk rel="copy-dir" href="public" />
-
-  <style>
-    #map-container { width: 100%; height: 100%; }
-    .sos-btn { animation: pulse 1.5s infinite; }
-    @keyframes pulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.7); }
-      50%       { box-shadow: 0 0 0 12px rgba(239,68,68,0); }
-    }
-  </style>
+  <!-- Leaflet – open-source map library (no API key needed) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Leaflet.heat – heatmap plugin -->
+  <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 </head>
 <body class="overflow-hidden">
 
 <div id="main"></div>
 
-<!-- ── Google Maps ────────────────────────────────────────────────────────── -->
-<!-- The JS below is loaded AFTER the WASM boots; Maps API key is fetched     -->
-<!-- from /api/config at runtime, so we don't bake it into the HTML.          -->
+<!-- ═══════════════════════════════════════════════════════════════════════
+     JalanAman JS helpers  (called from Rust via wasm_bindgen)
+     Leaflet is already loaded from CDN above — no async waiting needed.
+     ═══════════════════════════════════════════════════════════════════════ -->
 <script>
-  // Loaded dynamically once we have the API key (see api.rs fetchConfig)
-  window.__loadGoogleMaps = function(apiKey) {
-    if (document.getElementById('gmap-script')) return;
-    const s = document.createElement('script');
-    s.id = 'gmap-script';
-    s.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=visualization&callback=__gmapReady`;
-    s.async = true;
-    s.defer = true;
-    document.head.appendChild(s);
-  };
-
-  window.__gmapReady = function() {
-    window.__gmapsLoaded = true;
-    document.dispatchEvent(new Event('gmaps-ready'));
-  };
-</script>
-
-<!-- ── JalanAman JS helpers (called from Rust via wasm_bindgen) ──────────── -->
-<script>
-  // ─ Map helpers ─────────────────────────────────────────────────────────────
-  window.jaMap = null;
-  window.jaMarkers = [];
-  window.jaHeatmap = null;
+  // ── Map state ───────────────────────────────────────────────────────────────
+  window.jaMap      = null;
+  window.jaMarkers  = [];
+  window.jaHeatmap  = null;
   window.jaPolyline = null;
 
-  window.ja_initMap = function(lat, lng) {
+  window.ja_initMap = function (lat, lng) {
     const el = document.getElementById('map-container');
-    if (!el || !window.google) return;
-    window.jaMap = new google.maps.Map(el, {
-      center: { lat, lng },
-      zoom: 16,
-      disableDefaultUI: true,
-      zoomControl: true,
-      styles: [{ featureType: 'poi', stylers: [{ visibility: 'off' }] }],
-    });
+    if (!el || window.jaMap) return;
+    window.jaMap = L.map('map-container', { zoomControl: true }).setView([lat, lng], 16);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+    }).addTo(window.jaMap);
   };
 
-  window.ja_addReportMarker = function(id, lat, lng, category, note) {
+  window.ja_addReportMarker = function (id, lat, lng, category, note) {
     if (!window.jaMap) return;
-    const icons = {
-      crime:    '🔴',
-      lighting: '🟡',
-      accident: '🟠',
-      other:    '⚪',
-    };
-    const emoji = icons[category] || '⚪';
-    const marker = new google.maps.Marker({
-      position: { lat, lng },
-      map: window.jaMap,
-      label: { text: emoji, fontSize: '18px' },
-      title: note || category,
-    });
+    const colors  = { crime: '#ef4444', accident: '#f97316', lighting: '#eab308', other: '#6b7280' };
+    const labels  = { crime: 'Rawan Begal/Copet', accident: 'Rawan Kecelakaan', lighting: 'Pencahayaan Buruk', other: 'Lainnya' };
+    const emojis  = { crime: '🔴', accident: '🟠', lighting: '🟡', other: '⚪' };
+    const color   = colors[category]  || '#6b7280';
+    const label   = labels[category]  || category;
+    const emoji   = emojis[category]  || '⚪';
+
+    const marker = L.circleMarker([lat, lng], {
+      radius: 9, fillColor: color,
+      color: '#fff', weight: 2, opacity: 1, fillOpacity: 0.85,
+    }).addTo(window.jaMap);
+
+    marker.bindPopup(
+      `<b style="color:${color}">${emoji} ${label}</b>` +
+      (note ? `<br><span style="color:#555;font-size:12px">${note}</span>` : '')
+    );
+
     marker.__id = id;
     window.jaMarkers.push(marker);
   };
 
-  window.ja_clearMarkers = function() {
-    window.jaMarkers.forEach(m => m.setMap(null));
+  window.ja_clearMarkers = function () {
+    window.jaMarkers.forEach(m => { if (window.jaMap) window.jaMap.removeLayer(m); });
     window.jaMarkers = [];
   };
 
-  window.ja_drawRoutePolyline = function(waypointsJson, level) {
+  window.ja_drawRoutePolyline = function (waypointsJson, level) {
     if (!window.jaMap) return;
-    const pts = JSON.parse(waypointsJson);
     const colors = { Aman: '#22c55e', Waspada: '#f59e0b', Hindari: '#ef4444' };
-    if (window.jaPolyline) window.jaPolyline.setMap(null);
-    window.jaPolyline = new google.maps.Polyline({
-      path: pts.map(p => ({ lat: p.lat, lng: p.lng })),
-      strokeColor: colors[level] || '#6b7280',
-      strokeOpacity: 0.9,
-      strokeWeight: 5,
-      map: window.jaMap,
+    if (window.jaPolyline) window.jaMap.removeLayer(window.jaPolyline);
+    const pts = JSON.parse(waypointsJson).map(p => [p.lat, p.lng]);
+    window.jaPolyline = L.polyline(pts, {
+      color: colors[level] || '#6b7280',
+      weight: 5,
+      opacity: 0.9,
+    }).addTo(window.jaMap);
+    window.jaMap.fitBounds(window.jaPolyline.getBounds(), { padding: [30, 30] });
+  };
+
+  window.ja_initHeatmap = function (pointsJson) {
+    if (!window.jaMap || typeof L.heatLayer !== 'function') return;
+    const pts = JSON.parse(pointsJson).map(p => [p.lat, p.lng, 1]);
+    if (window.jaHeatmap) window.jaMap.removeLayer(window.jaHeatmap);
+    window.jaHeatmap = L.heatLayer(pts, {
+      radius: 25,
+      blur: 15,
+      maxZoom: 17,
+      gradient: { 0.2: '#3b82f6', 0.5: '#f59e0b', 0.8: '#ef4444' },
+    }).addTo(window.jaMap);
+  };
+
+  window.ja_panTo = function (lat, lng) {
+    if (window.jaMap) window.jaMap.setView([lat, lng], window.jaMap.getZoom());
+  };
+
+  // ── Directions (OSRM – gratis, no API key) ──────────────────────────────────
+  /**
+   * Calls OSRM public routing server + Nominatim geocoder.
+   * Returns JSON string: { waypoints: [{lat,lng}], polyline: [{lat,lng}] }
+   *
+   * `origin` and `destination` can be:
+   *   - "lat,lng"  string (if geolocation known)
+   *   - place name (e.g. "Monas Jakarta") → geocoded via Nominatim
+   */
+  window.ja_getDirections = async function (origin, destination, mode) {
+    async function geocode (query) {
+      const m = query.match(/^(-?\d+\.?\d*),\s*(-?\d+\.?\d*)$/);
+      if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+
+      const url = 'https://nominatim.openstreetmap.org/search?' +
+        new URLSearchParams({ q: query, format: 'json', limit: '1', countrycodes: 'id' });
+      const res  = await fetch(url, { headers: { 'User-Agent': 'JalanAman/1.0' } });
+      const data = await res.json();
+      if (!data.length) throw new Error(`Lokasi "${query}" tidak ditemukan`);
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    }
+
+    const [from, to] = await Promise.all([geocode(origin), geocode(destination)]);
+
+    // OSRM coordinate order: lng,lat
+    const profile = (mode === 'driving') ? 'driving' : 'foot';
+    const osrmUrl = `https://router.project-osrm.org/route/v1/${profile}/` +
+      `${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`;
+
+    const res  = await fetch(osrmUrl);
+    const data = await res.json();
+
+    if (data.code !== 'Ok' || !data.routes?.length) {
+      throw new Error('Rute tidak ditemukan');
+    }
+
+    // GeoJSON: [lng, lat] → convert to { lat, lng }
+    const all = data.routes[0].geometry.coordinates.map(([lng, lat]) => ({ lat, lng }));
+
+    // Sample ~20 evenly-spaced waypoints for backend scoring
+    const step = Math.max(1, Math.floor(all.length / 20));
+    const waypoints = all.filter((_, i) => i % step === 0);
+    if (waypoints[waypoints.length - 1] !== all[all.length - 1]) {
+      waypoints.push(all[all.length - 1]);
+    }
+
+    return JSON.stringify({ waypoints, polyline: all });
+  };
+
+  // ── SOS alarm (local device) ─────────────────────────────────────────────────
+  window.ja_playSOSAlarm = function () {
+    if (navigator.vibrate) navigator.vibrate([800, 200, 800, 200, 800, 200, 800]);
+    try {
+      const ctx   = new (window.AudioContext || window.webkitAudioContext)();
+      const freqs = [880, 440, 880, 440, 880, 440];
+      freqs.forEach((freq, i) => {
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'square'; osc.frequency.value = freq; gain.gain.value = 0.4;
+        osc.connect(gain); gain.connect(ctx.destination);
+        const t = ctx.currentTime + i * 0.45;
+        osc.start(t); osc.stop(t + 0.4);
+      });
+    } catch (e) { console.warn('AudioContext:', e); }
+  };
+
+  window.ja_stopSOSAlarm = function () {
+    if (navigator.vibrate) navigator.vibrate(0);
+  };
+
+  // ── Push notifications ───────────────────────────────────────────────────────
+  window.ja_registerServiceWorker = async function () {
+    if (!('serviceWorker' in navigator)) return null;
+    try   { return await navigator.serviceWorker.register('/sw.js'); }
+    catch (e) { console.error('SW register:', e); return null; }
+  };
+
+  window.ja_requestNotificationPermission = async function () {
+    if (!('Notification' in window)) return 'denied';
+    return await Notification.requestPermission();
+  };
+
+  window.ja_subscribePush = async function (vapidPublicKey) {
+    const reg      = await navigator.serviceWorker.ready;
+    const existing = await reg.pushManager.getSubscription();
+    if (existing) return JSON.stringify(existing.toJSON());
+
+    function urlB64ToUint8 (b64) {
+      const pad = '='.repeat((4 - b64.length % 4) % 4);
+      const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+      return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+    }
+
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlB64ToUint8(vapidPublicKey),
     });
+    return JSON.stringify(sub.toJSON());
   };
 
-  window.ja_initHeatmap = function(pointsJson) {
-    if (!window.jaMap || !google.maps.visualization) return;
-    const pts = JSON.parse(pointsJson).map(p =>
-      new google.maps.LatLng(p.lat, p.lng)
-    );
-    if (window.jaHeatmap) window.jaHeatmap.setMap(null);
-    window.jaHeatmap = new google.maps.visualization.HeatmapLayer({
-      data: pts,
-      map: window.jaMap,
-      radius: 30,
-    });
-  };
-
-  window.ja_panTo = function(lat, lng) {
-    if (window.jaMap) window.jaMap.panTo({ lat, lng });
-  };
-
-  // ─ Geolocation ─────────────────────────────────────────────────────────────
-  window.ja_getCurrentPosition = function(callback) {
+  // ── Geolocation ──────────────────────────────────────────────────────────────
+  window.ja_getCurrentPosition = function (callback) {
     if (!navigator.geolocation) { callback(null, null); return; }
     navigator.geolocation.getCurrentPosition(
       pos => callback(pos.coords.latitude, pos.coords.longitude),
@@ -136,75 +212,26 @@
     );
   };
 
-  // ─ SOS alarm (local) ───────────────────────────────────────────────────────
-  window.ja_playSOSAlarm = function() {
-    // Vibration
-    if (navigator.vibrate) {
-      navigator.vibrate([800, 200, 800, 200, 800, 200, 800]);
+  // ── Clipboard ─────────────────────────────────────────────────────────────────
+  window.ja_copyToClipboard = function (text) {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).catch(console.warn);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
     }
-    // Audio: alternating high/low beeps
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const freqs = [880, 440, 880, 440, 880, 440];
-      freqs.forEach((freq, i) => {
-        const osc  = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'square';
-        osc.frequency.value = freq;
-        gain.gain.value = 0.4;
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        const t = ctx.currentTime + i * 0.45;
-        osc.start(t);
-        osc.stop(t + 0.4);
-      });
-    } catch (e) { console.warn('AudioContext error', e); }
   };
 
-  window.ja_stopSOSAlarm = function() {
-    if (navigator.vibrate) navigator.vibrate(0);
-    // AudioContext nodes auto-stop; nothing else to do
-  };
-
-  // ─ Push Notification subscription ─────────────────────────────────────────
-  window.ja_registerServiceWorker = async function() {
-    if (!('serviceWorker' in navigator)) return null;
-    try {
-      const reg = await navigator.serviceWorker.register('/sw.js');
-      return reg;
-    } catch (e) { console.error('SW register failed', e); return null; }
-  };
-
-  window.ja_subscribePush = async function(vapidPublicKey) {
-    const reg = await navigator.serviceWorker.ready;
-    const existing = await reg.pushManager.getSubscription();
-    if (existing) return JSON.stringify(existing.toJSON());
-
-    const sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: ja_urlBase64ToUint8Array(vapidPublicKey),
-    });
-    return JSON.stringify(sub.toJSON());
-  };
-
-  window.ja_urlBase64ToUint8Array = function(base64String) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-    const raw = window.atob(base64);
-    return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
-  };
-
-  window.ja_requestNotificationPermission = async function() {
-    if (!('Notification' in window)) return 'denied';
-    return await Notification.requestPermission();
-  };
-
-  // ─ Local device hash (persisted) ──────────────────────────────────────────
-  window.ja_getDeviceHash = function() {
+  // ── Device hash (persisted in localStorage) ──────────────────────────────────
+  window.ja_getDeviceHash = function () {
     let h = localStorage.getItem('ja_device_hash');
     if (!h) {
-      // Simple random ID, not cryptographically linked to hardware
-      h = crypto.randomUUID();
+      h = (typeof crypto.randomUUID === 'function')
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2) + Date.now().toString(36);
       localStorage.setItem('ja_device_hash', h);
     }
     return h;

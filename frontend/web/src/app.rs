@@ -1,18 +1,26 @@
 use dioxus::prelude::*;
 use dioxus_router::prelude::*;
 
-use crate::pages::{dashboard::Dashboard, home::Home, invite::Invite};
+// Kita harus import semua komponen yang dipakai di Route
+use crate::pages::dashboard::Dashboard;
+use crate::pages::home::Home; // <-- INI YANG KURANG TADI
+use crate::pages::contacts::Contacts;
 
-#[derive(Clone, Routable, Debug, PartialEq)]
+#[derive(Routable, Clone, PartialEq, Debug)]
+#[rustfmt::skip]
 pub enum Route {
     #[route("/")]
-    Home {},
-    #[route("/dashboard")]
     Dashboard {},
-    #[route("/invite/:token")]
-    Invite { token: String },
+    
+    #[route("/home")]
+    Home {},
+    
+    #[route("/contacts")]
+    Contacts {},
 }
 
 pub fn App() -> Element {
-    rsx! { Router::<Route> {} }
+    rsx! {
+        Router::<Route> {}
+    }
 }
