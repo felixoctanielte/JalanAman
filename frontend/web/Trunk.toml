@@ -11,6 +11,7 @@ stage = "pre_build"
 command = "npx"
 command_arguments = [
   "tailwindcss",
+  "-c", "tailwind.config.js",
   "-i", "assets/tailwind.css",
   "-o", "assets/tw.css",
   "--minify"

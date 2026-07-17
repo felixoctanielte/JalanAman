@@ -1,17 +1,17 @@
 [application]
-name            = "jalanaman-web"
+name = "jalanaman-web"
 default_platform = "web"
 
 [web.app]
-title     = "JalanAman – Rute Teraman"
+title = "JalanAman - Rute Teraman"
 base_path = "/"
 
 [web.resource]
-style  = ["assets/tw.css"]
+style = ["assets/tw.css"]
 script = []
 
 [web.resource.dev]
-style  = []
+style = []
 script = []
 
 # Proxy /api dan /health ke backend Axum (cargo run di port 8080)
