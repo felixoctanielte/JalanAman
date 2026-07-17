@@ -38,5 +38,5 @@ pub struct HeatmapPoint {
     pub lng: f64,
     pub weight: f64,
     pub category: String,
-    pub description: String,
+    pub note: Option<String>,
 }

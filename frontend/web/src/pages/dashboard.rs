@@ -5,14 +5,11 @@ use crate::services::api::{HeatmapPoint, get_heatmap_data};
 
 #[component]
 pub fn Dashboard() -> Element {
-    // State management untuk Light/Dark Mode (Default: true/Dark)
+    // State management
     let mut is_dark = use_signal(|| true);
-    
-    // State Filter Checkbox (Ditambahkan Kategori Lainnya)
     let mut show_gelap = use_signal(|| true);
     let mut show_rawan = use_signal(|| true);
     let mut show_kecelakaan = use_signal(|| true);
-    let mut show_lainnya = use_signal(|| true); // ✨ BARU: State untuk kategori Lainnya (other)
     
     // State untuk Search Bar
     let mut search_query = use_signal(|| String::new());
@@ -21,7 +18,7 @@ pub fn Dashboard() -> Element {
     let mut user_location = use_signal(|| None::<(f64, f64)>);
     let mut location_error = use_signal(|| None::<String>);
 
-    // STATE: Menampung kumpulan data HeatmapPoint riil hasil fetch dari Backend API
+    // ✨ STATE BARU: Menampung kumpulan data HeatmapPoint riil hasil fetch dari Backend API
     let mut raw_points_data = use_signal(|| Vec::<HeatmapPoint>::new());
 
     // Alur inisialisasi awal: Minta izin lokasi pengguna & Fetch data dari Backend
@@ -78,14 +75,13 @@ pub fn Dashboard() -> Element {
         });
     });
 
-    // ✨ FILTER DATA: Memproses penyaringan berdasarkan kategori (Termasuk Kategori "other" / "Lainnya")
+    // ✨ FILTER DATA: Memproses penyaringan berdasarkan properti struct HeatmapPoint secara presisi
     let filtered_points = raw_points_data()
         .into_iter()
         .filter(|point| {
             if point.category == "lighting" && !show_gelap() { return false; }
             if point.category == "crime" && !show_rawan() { return false; }
             if point.category == "accident" && !show_kecelakaan() { return false; }
-            if point.category == "other" && !show_lainnya() { return false; } // ✨ BARU: Menyaring kategori other
             true
         })
         .collect::<Vec<HeatmapPoint>>();
@@ -130,7 +126,7 @@ pub fn Dashboard() -> Element {
         "#);
     };
 
-    // Styling dinamis sesuai tema Light/Dark
+    // Styling dinamis
     let page_bg = if is_dark() { "bg-slate-950" } else { "bg-slate-50" };
     let text_main = if is_dark() { "text-slate-100" } else { "text-slate-900" };
     let text_muted = if is_dark() { "text-slate-400" } else { "text-slate-500" };
@@ -139,13 +135,6 @@ pub fn Dashboard() -> Element {
         "bg-slate-900/40 border-slate-800" 
     } else { 
         "bg-white border-slate-200" 
-    };
-
-    // ✨ BARU: Styling Search Bar Container yang adaptif penuh terhadap Light/Dark Mode
-    let search_bar_bg = if is_dark() {
-        "bg-slate-900/60 border-slate-800"
-    } else {
-        "bg-white border-slate-300/80 shadow-sm"
     };
 
     rsx! {
@@ -183,11 +172,6 @@ pub fn Dashboard() -> Element {
                             label { class: "flex items-center gap-3 cursor-pointer group",
                                 input { "type": "checkbox", checked: show_kecelakaan(), onclick: move |_| show_kecelakaan.set(!show_kecelakaan()), class: "w-5 h-5 rounded border-slate-300 accent-rose-500 cursor-pointer" }
                                 span { class: "text-sm font-medium group-hover:text-blue-500 transition-colors {text_main}", "Kecelakaan" }
-                            },
-                            // ✨ BARU: Checkbox Kategori "Lainnya"
-                            label { class: "flex items-center gap-3 cursor-pointer group",
-                                input { "type": "checkbox", checked: show_lainnya(), onclick: move |_| show_lainnya.set(!show_lainnya()), class: "w-5 h-5 rounded border-slate-300 accent-slate-500 cursor-pointer" }
-                                span { class: "text-sm font-medium group-hover:text-blue-500 transition-colors {text_main}", "Lainnya" }
                             }
                         }
                     }
@@ -196,9 +180,9 @@ pub fn Dashboard() -> Element {
                 // Area Konten Peta & Search Bar
                 div { class: "md:col-span-3 space-y-4",
                     
-                    // Search Bar & Tombol Lokasi Saya (Menggunakan class adaptif {search_bar_bg})
+                    // Search Bar & Tombol Lokasi Saya (Hanya muncul jika lokasi diijinkan)
                     if user_location().is_some() {
-                        div { class: "flex gap-2 w-full max-w-lg rounded-2xl overflow-hidden border p-1.5 transition-colors duration-300 {search_bar_bg}",
+                        div { class: "flex gap-2 w-full max-w-lg shadow-md rounded-2xl overflow-hidden border border-slate-200/60 dark:border-slate-800/50 bg-white dark:bg-slate-900/60 p-1.5",
                             input {
                                 "type": "text",
                                 placeholder: "Cari daerah (contoh: Gading Serpong)...",
@@ -221,7 +205,7 @@ pub fn Dashboard() -> Element {
                     }
 
                     // Box Konten Utama (Peta atau Wording Error)
-                    div { class: "h-[500px] rounded-3xl border {card_style} relative overflow-hidden transition-all duration-500 flex items-center justify-center p-6 text-center",
+                    div { class: "h-[500px] rounded-3xl border border-slate-200/60 dark:border-slate-800/50 {card_style} relative overflow-hidden transition-all duration-500 flex items-center justify-center p-6 text-center",
                         if let Some((lat, lng)) = user_location() {
                             // Tampilkan peta asli menggunakan koordinat user ter-update
                             HeatmapMapView { points: filtered_points, center_lat: lat, center_lng: lng }
