@@ -4,15 +4,9 @@ FROM docker.io/library/rust:1.88-slim-bookworm AS builder
 RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-
-# 1. Cukup salin Cargo.toml milik backend saja (tidak butuh Cargo.lock)
 COPY Cargo.toml ./
-
-# 2. Trick caching dependency: buat dummy main.rs untuk memicu instalasi dependencies
-RUN mkdir src && \
-    echo 'fn main() {}' > src/main.rs && \
-    cargo build --release && \
-    rm -rf src
+# Cache dependency compilation
+RUN mkdir src && echo 'fn main() {}' > src/main.rs && cargo build --release && rm -rf src
 
 # 3. Salin source code asli dan migrations milik backend
 COPY src ./src
