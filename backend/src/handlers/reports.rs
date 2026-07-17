@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use crate::{
     error::AppError,
-    models::report::{CreateReportPayload, GetReportsParams, Report},
+    models::report::{CreateReportPayload, GetReportsParams, Report, HeatmapPoint},
     AppState,
 };
 
@@ -147,4 +147,26 @@ pub async fn downvote_report(
     .ok_or(AppError::NotFound)?;
 
     Ok(Json(report))
+}
+
+pub async fn get_heatmap(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<HeatmapPoint>>, AppError> {
+    let points = sqlx::query_as::<_, HeatmapPoint>(
+        r#"
+        SELECT 
+            lat, 
+            lng,
+            (1.0 + upvote_count)::double precision AS weight,
+            category::text AS category,
+            COALESCE(note, '') AS description -- 👈 Ambil note sebagai description & handle NULL
+        FROM reports
+        WHERE status = 'active'
+          AND created_at > NOW() - INTERVAL '30 days'
+        "#,
+    )
+    .fetch_all(&state.db)
+    .await?;
+
+    Ok(Json(points))
 }

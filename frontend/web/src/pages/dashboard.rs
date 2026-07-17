@@ -1,146 +1,244 @@
-use crate::{app::Route, services::api, utils::js};
 use dioxus::prelude::*;
-use jalanaman_shared::{category_emoji, category_label, Report};
+use dioxus::document::eval;
+use crate::components::map::HeatmapMapView;
+use crate::services::api::{HeatmapPoint, get_heatmap_data}; 
 
 #[component]
 pub fn Dashboard() -> Element {
-    let mut reports = use_signal(Vec::<Report>::new);
-    let mut loading = use_signal(|| true);
-    let mut map_inited = use_signal(|| false);
+    // State management untuk Light/Dark Mode (Default: true/Dark)
+    let mut is_dark = use_signal(|| true);
+    
+    // State Filter Checkbox (Ditambahkan Kategori Lainnya)
+    let mut show_gelap = use_signal(|| true);
+    let mut show_rawan = use_signal(|| true);
+    let mut show_kecelakaan = use_signal(|| true);
+    let mut show_lainnya = use_signal(|| true); // ✨ BARU: State untuk kategori Lainnya (other)
+    
+    // State untuk Search Bar
+    let mut search_query = use_signal(|| String::new());
 
-    // Fetch data then init map + heatmap. Leaflet is already loaded from CDN,
-    // so init_map() can be called synchronously right after data arrives.
+    // State untuk koordinat riil user dan error handling
+    let mut user_location = use_signal(|| None::<(f64, f64)>);
+    let mut location_error = use_signal(|| None::<String>);
+
+    // STATE: Menampung kumpulan data HeatmapPoint riil hasil fetch dari Backend API
+    let mut raw_points_data = use_signal(|| Vec::<HeatmapPoint>::new());
+
+    // Alur inisialisasi awal: Minta izin lokasi pengguna & Fetch data dari Backend
     use_effect(move || {
-        spawn(async move {
-            // Jakarta-wide radius (50 km) for city-level heatmap
-            let data = api::get_reports(-6.2088, 106.8456, 50_000.0)
-                .await
-                .unwrap_or_default();
+        let mut geo_eval = eval(r#"
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        dioxus.send(JSON.stringify({
+                            status: "success",
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        }));
+                    },
+                    (error) => {
+                        let msg = "Akses lokasi ditolak. Mohon aktifkan izin lokasi pada browser Anda untuk melihat peta keamanan di sekitar Anda.";
+                        if (error.code === error.PERMISSION_DENIED) {
+                            dioxus.send(JSON.stringify({ status: "error", message: msg }));
+                        } else {
+                            dioxus.send(JSON.stringify({ status: "error", message: "Gagal mendapatkan lokasi terkini." }));
+                        }
+                    },
+                    { enableHighAccuracy: true }
+                );
+            } else {
+                dioxus.send(JSON.stringify({ status: "error", message: "Browser Anda tidak mendukung fitur Geolocation." }));
+            }
+        "#);
 
-            if !*map_inited.read() {
-                map_inited.set(true);
-                js::init_map(-6.2088, 106.8456);
-                let pts: Vec<_> = data
-                    .iter()
-                    .map(|r| serde_json::json!({ "lat": r.lat, "lng": r.lng }))
-                    .collect();
-                js::init_heatmap(&serde_json::to_string(&pts).unwrap_or_default());
+        spawn(async move {
+            // 1. Ambil koordinat lokasi user dari sisi browser web
+            if let Ok(response) = geo_eval.recv::<String>().await {
+                if let Ok(res_json) = serde_json::from_str::<serde_json::Value>(&response) {
+                    if res_json["status"] == "success" {
+                        let lat = res_json["lat"].as_f64().unwrap_or(0.0);
+                        let lng = res_json["lng"].as_f64().unwrap_or(0.0);
+                        user_location.set(Some((lat, lng)));
+                    } else {
+                        let err_msg = res_json["message"].as_str().unwrap_or("Unknown error").to_string();
+                        location_error.set(Some(err_msg));
+                    }
+                }
             }
 
-            reports.set(data);
-            loading.set(false);
+            // 🚀 2. KONEKSI BACKEND: Ambil data heatmap aktual dari database
+            match get_heatmap_data().await {
+                Ok(points) => {
+                    raw_points_data.set(points);
+                }
+                Err(e) => {
+                    log::error!("Gagal memuat titik heatmap dari backend: {}", e);
+                }
+            }
         });
     });
 
-    let crime_ct = reports
-        .read()
-        .iter()
-        .filter(|r| r.category == "crime")
-        .count();
-    let accident_ct = reports
-        .read()
-        .iter()
-        .filter(|r| r.category == "accident")
-        .count();
-    let lighting_ct = reports
-        .read()
-        .iter()
-        .filter(|r| r.category == "lighting")
-        .count();
-    let other_ct = reports
-        .read()
-        .iter()
-        .filter(|r| r.category == "other")
-        .count();
+    // ✨ FILTER DATA: Memproses penyaringan berdasarkan kategori (Termasuk Kategori "other" / "Lainnya")
+    let filtered_points = raw_points_data()
+        .into_iter()
+        .filter(|point| {
+            if point.category == "lighting" && !show_gelap() { return false; }
+            if point.category == "crime" && !show_rawan() { return false; }
+            if point.category == "accident" && !show_kecelakaan() { return false; }
+            if point.category == "other" && !show_lainnya() { return false; } // ✨ BARU: Menyaring kategori other
+            true
+        })
+        .collect::<Vec<HeatmapPoint>>();
 
-    rsx! {
-        div { class: "min-h-screen bg-gray-50",
+    // Fungsi Aksi Search via Nominatim OpenStreetMap
+    let on_search = move |_| {
+        let query = search_query();
+        if query.is_empty() { return; }
 
-            div { class: "bg-blue-700 text-white px-4 py-3 flex items-center gap-3 shadow",
-                Link { to: Route::Home {}, class: "text-blue-200 hover:text-white text-sm", "← Kembali" }
-                h1 { class: "font-bold text-lg", "Dashboard Keamanan Wilayah" }
+        let mut search_eval = eval(r#"
+            let query = await dioxus.recv();
+            try {
+                let url = 'https://nominatim.openstreetmap.org/search?' + new URLSearchParams({ q: query, format: 'json', limit: '1', countrycodes: 'id' });
+                let res = await fetch(url, { headers: { 'User-Agent': 'JalanAman/1.0' } });
+                let data = await res.json();
+                if (data && data.length > 0) {
+                    let lat = parseFloat(data[0].lat);
+                    let lng = parseFloat(data[0].lon);
+                    if (window.ja_panTo) {
+                        window.ja_panTo(lat, lng);
+                    }
+                } else {
+                    alert("Lokasi tidak ditemukan di Indonesia!");
+                }
+            } catch (e) {
+                console.error("Gagal melakukan pencarian:", e);
             }
-
-            div { class: "p-4 max-w-4xl mx-auto",
-
-                div { class: "grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6",
-                    StatCard { icon: "🔴", label: "Rawan Begal",       count: crime_ct,    color: "red"    }
-                    StatCard { icon: "🟠", label: "Rawan Kecelakaan",  count: accident_ct, color: "orange" }
-                    StatCard { icon: "🟡", label: "Pencahayaan Buruk", count: lighting_ct, color: "yellow" }
-                    StatCard { icon: "⚪", label: "Lainnya",           count: other_ct,    color: "gray"   }
-                }
-
-                div { class: "bg-white rounded-2xl shadow overflow-hidden mb-4",
-                    div { class: "px-4 py-3 border-b border-gray-100",
-                        h2 { class: "font-semibold text-gray-700", "Peta Titik Rawan (Heatmap)" }
-                        p  { class: "text-xs text-gray-400 mt-0.5", "Data 30 hari terakhir · OpenStreetMap" }
-                    }
-                    div { class: "relative",
-                        div { id: "map-container", class: "w-full h-96" }
-                        if *loading.read() {
-                            div { class: "absolute inset-0 flex items-center justify-center bg-gray-50/80",
-                                span { class: "text-gray-400 text-sm", "Memuat heatmap..." }
-                            }
-                        }
-                    }
-                }
-
-                div { class: "bg-white rounded-2xl shadow overflow-hidden",
-                    div { class: "px-4 py-3 border-b border-gray-100 flex items-center justify-between",
-                        h2 { class: "font-semibold text-gray-700", "Laporan Terbaru" }
-                        span { class: "text-xs text-gray-400", "{reports.read().len()} total" }
-                    }
-                    div { class: "divide-y divide-gray-50 max-h-80 overflow-y-auto",
-                        for r in reports.read().iter().take(50) {
-                            div { class: "px-4 py-3 flex items-start gap-3 hover:bg-gray-50",
-                                span { class: "text-lg flex-shrink-0", "{category_emoji(&r.category)}" }
-                                div { class: "flex-1 min-w-0",
-                                    p { class: "text-sm font-medium text-gray-700", "{category_label(&r.category)}" }
-                                    if let Some(note) = &r.note {
-                                        p { class: "text-xs text-gray-400 truncate", "{note}" }
-                                    }
-                                }
-                                div { class: "text-right flex-shrink-0",
-                                    p { class: "text-xs text-gray-400", "{r.lat:.4}, {r.lng:.4}" }
-                                    div { class: "flex gap-1 justify-end mt-1",
-                                        span { class: "text-xs text-green-600", "▲{r.upvote_count}" }
-                                        span { class: "text-xs text-red-400",   "▼{r.downvote_count}" }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-#[component]
-fn StatCard(icon: &'static str, label: &'static str, count: usize, color: &'static str) -> Element {
-    let (card_class, count_class) = match color {
-        "red" => (
-            "border bg-red-50 border-red-100 rounded-2xl p-4",
-            "text-2xl font-black text-red-700",
-        ),
-        "orange" => (
-            "border bg-orange-50 border-orange-100 rounded-2xl p-4",
-            "text-2xl font-black text-orange-700",
-        ),
-        "yellow" => (
-            "border bg-yellow-50 border-yellow-100 rounded-2xl p-4",
-            "text-2xl font-black text-yellow-700",
-        ),
-        _ => (
-            "border bg-gray-50 border-gray-100 rounded-2xl p-4",
-            "text-2xl font-black text-gray-700",
-        ),
+        "#);
+        let _ = search_eval.send(query);
     };
+
+    // Fungsi untuk memicu reposisi ke live location secara manual dari tombol
+    let on_live_location = move |_| {
+        let _ = eval(r#"
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((position) => {
+                    if (window.ja_panTo) {
+                        window.ja_panTo(position.coords.latitude, position.coords.longitude);
+                    }
+                }, null, { enableHighAccuracy: true });
+            }
+        "#);
+    };
+
+    // Styling dinamis sesuai tema Light/Dark
+    let page_bg = if is_dark() { "bg-slate-950" } else { "bg-slate-50" };
+    let text_main = if is_dark() { "text-slate-100" } else { "text-slate-900" };
+    let text_muted = if is_dark() { "text-slate-400" } else { "text-slate-500" };
+    
+    let card_style = if is_dark() { 
+        "bg-slate-900/40 border-slate-800" 
+    } else { 
+        "bg-white border-slate-200" 
+    };
+
+    // ✨ BARU: Styling Search Bar Container yang adaptif penuh terhadap Light/Dark Mode
+    let search_bar_bg = if is_dark() {
+        "bg-slate-900/60 border-slate-800"
+    } else {
+        "bg-white border-slate-300/80 shadow-sm"
+    };
+
     rsx! {
-        div { class: card_class,
-            div { class: "text-2xl mb-1", "{icon}" }
-            div { class: count_class, "{count}" }
-            div { class: "text-xs text-gray-500 mt-0.5", "{label}" }
+        div { class: "min-h-screen w-full {page_bg} p-6 md:p-12 font-sans transition-colors duration-300",
+            
+            // Header
+            div { class: "max-w-6xl mx-auto mb-10 flex justify-between items-center",
+                div {
+                    h1 { class: "text-3xl font-extrabold tracking-tight {text_main}", "Dashboard Keamanan" }
+                    p { class: "text-sm mt-1 {text_muted}", "Memantau situasi wilayah secara real-time" }
+                },
+                button {
+                    onclick: move |_| is_dark.set(!is_dark()),
+                    class: "px-5 py-2.5 rounded-full text-xs font-bold border border-slate-700/20 hover:scale-105 transition-all {text_main}",
+                    if is_dark() { "☀️ Light Mode" } else { "🌙 Dark Mode" }
+                }
+            },
+
+            // Container Utama
+            div { class: "max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8",
+                
+                // Sidebar Filter
+                div { class: "md:col-span-1 space-y-10",
+                    div { class: "space-y-4",
+                        h2 { class: "text-xs font-bold uppercase tracking-widest {text_muted}", "Kategori Laporan" },
+                        div { class: "space-y-3",
+                            label { class: "flex items-center gap-3 cursor-pointer group",
+                                input { "type": "checkbox", checked: show_gelap(), onclick: move |_| show_gelap.set(!show_gelap()), class: "w-5 h-5 rounded border-slate-300 accent-amber-500 cursor-pointer" }
+                                span { class: "text-sm font-medium group-hover:text-blue-500 transition-colors {text_main}", "Gelap" }
+                            },
+                            label { class: "flex items-center gap-3 cursor-pointer group",
+                                input { "type": "checkbox", checked: show_rawan(), onclick: move |_| show_rawan.set(!show_rawan()), class: "w-5 h-5 rounded border-slate-300 accent-red-500 cursor-pointer" }
+                                span { class: "text-sm font-medium group-hover:text-blue-500 transition-colors {text_main}", "Rawan" }
+                            },
+                            label { class: "flex items-center gap-3 cursor-pointer group",
+                                input { "type": "checkbox", checked: show_kecelakaan(), onclick: move |_| show_kecelakaan.set(!show_kecelakaan()), class: "w-5 h-5 rounded border-slate-300 accent-rose-500 cursor-pointer" }
+                                span { class: "text-sm font-medium group-hover:text-blue-500 transition-colors {text_main}", "Kecelakaan" }
+                            },
+                            // ✨ BARU: Checkbox Kategori "Lainnya"
+                            label { class: "flex items-center gap-3 cursor-pointer group",
+                                input { "type": "checkbox", checked: show_lainnya(), onclick: move |_| show_lainnya.set(!show_lainnya()), class: "w-5 h-5 rounded border-slate-300 accent-slate-500 cursor-pointer" }
+                                span { class: "text-sm font-medium group-hover:text-blue-500 transition-colors {text_main}", "Lainnya" }
+                            }
+                        }
+                    }
+                },
+
+                // Area Konten Peta & Search Bar
+                div { class: "md:col-span-3 space-y-4",
+                    
+                    // Search Bar & Tombol Lokasi Saya (Menggunakan class adaptif {search_bar_bg})
+                    if user_location().is_some() {
+                        div { class: "flex gap-2 w-full max-w-lg rounded-2xl overflow-hidden border p-1.5 transition-colors duration-300 {search_bar_bg}",
+                            input {
+                                "type": "text",
+                                placeholder: "Cari daerah (contoh: Gading Serpong)...",
+                                value: "{search_query}",
+                                oninput: move |e| search_query.set(e.value()),
+                                class: "w-full bg-transparent px-4 py-2 text-sm focus:outline-none {text_main}"
+                            }
+                            button {
+                                onclick: on_search,
+                                class: "bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all whitespace-nowrap",
+                                "Cari"
+                            }
+                            button {
+                                onclick: on_live_location,
+                                class: "bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center gap-1 whitespace-nowrap",
+                                span { "📍" }
+                                "Lokasi Saya"
+                            }
+                        }
+                    }
+
+                    // Box Konten Utama (Peta atau Wording Error)
+                    div { class: "h-[500px] rounded-3xl border {card_style} relative overflow-hidden transition-all duration-500 flex items-center justify-center p-6 text-center",
+                        if let Some((lat, lng)) = user_location() {
+                            // Tampilkan peta asli menggunakan koordinat user ter-update
+                            HeatmapMapView { points: filtered_points, center_lat: lat, center_lng: lng }
+                        } else if let Some(err_msg) = location_error() {
+                            // Tampilkan Wording yang Sesuai jika Permission ditolak
+                            div { class: "max-w-md space-y-4",
+                                div { class: "text-4xl", "🔒" }
+                                h3 { class: "text-lg font-bold {text_main}", "Akses Peta Diblokir" }
+                                p { class: "text-sm {text_muted} leading-relaxed", "{err_msg}" }
+                            }
+                        } else {
+                            // Loading state saat mencari koordinat GPS pertama kali
+                            div { class: "text-sm font-medium animate-pulse {text_muted}", "Meminta akses lokasi saat ini..." }
+                        }
+                    }
+                }
+            }
         }
     }
 }

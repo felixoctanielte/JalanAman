@@ -4,6 +4,15 @@ use jalanaman_shared::*;
 
 const BASE: &str = "/api";
 
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, PartialEq)]
+pub struct HeatmapPoint {
+    pub lat: f64,
+    pub lng: f64,
+    pub weight: f64,
+    pub category: String,
+    pub description: String,
+}
+
 pub async fn fetch_config() -> Result<PublicConfig, String> {
     req_get(&format!("{BASE}/config")).await
 }
@@ -144,6 +153,10 @@ pub async fn subscribe_push_backend(p: &SubscribePushPayload) -> Result<(), Stri
     Ok(())
 }
 
+pub async fn get_heatmap_data() -> Result<Vec<HeatmapPoint>, String> {
+    req_get(&format!("{BASE}/reports/heatmap")).await
+}
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 async fn req_get<T: serde::de::DeserializeOwned>(url: &str) -> Result<T, String> {
@@ -155,3 +168,4 @@ async fn req_get<T: serde::de::DeserializeOwned>(url: &str) -> Result<T, String>
         .await
         .map_err(|e| e.to_string())
 }
+

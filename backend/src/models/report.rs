@@ -31,3 +31,12 @@ pub struct GetReportsParams {
     pub lng: f64,
     pub radius: Option<f64>,
 }
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct HeatmapPoint {
+    pub lat: f64,
+    pub lng: f64,
+    pub weight: f64,
+    pub category: String,
+    pub description: String,
+}

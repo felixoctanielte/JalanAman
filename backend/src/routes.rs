@@ -22,6 +22,7 @@ fn api_routes() -> Router<AppState> {
             "/reports",
             post(reports::create_report).get(reports::get_reports),
         )
+        .route("/reports/heatmap", get(reports::get_heatmap))
         .route("/reports/:id/upvote", post(reports::upvote_report))
         .route("/reports/:id/downvote", post(reports::downvote_report))
         // Route safety score

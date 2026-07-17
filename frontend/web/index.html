@@ -10,8 +10,8 @@
   <link rel="manifest" href="/manifest.json" />
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
 
-  <!-- Tailwind CSS (pre-built via: npx tailwindcss -i assets/tailwind.css -o assets/tw.css) -->
-  <link rel="stylesheet" href="assets/tw.css" />
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
 
   <!-- MapLibre GL + OpenFreeMap vector tiles (no API key needed) -->
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css" />
@@ -22,8 +22,7 @@
 <div id="main"></div>
 
 <!-- ═══════════════════════════════════════════════════════════════════════
-     JalanAman JS helpers  (called from Rust via wasm_bindgen)
-     MapLibre is already loaded from CDN above — no async waiting needed.
+     JalanAman JS helpers (called from Rust via wasm_bindgen / eval)
      ═══════════════════════════════════════════════════════════════════════ -->
 <script>
   // ── Map state ───────────────────────────────────────────────────────────────
@@ -190,43 +189,112 @@
     });
   };
 
+  // Simpan marker khusus "other" di global state agar bisa dibersihkan saat render ulang
+  window.jaOtherMarkers = [];
+
   window.ja_initHeatmap = function (pointsJson) {
     if (!window.jaMap) return;
-    const weights = { crime: 3, accident: 2, lighting: 1.4, other: 1 };
-    const points = JSON.parse(pointsJson).map(p => ({
-      type: 'Feature',
-      geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
-      properties: { weight: weights[p.category] || 1 },
-    }));
-    const data = jaFeatureCollection(points);
+    const weights = { crime: 3, accident: 2, lighting: 1.4 }; // 'other' dihapus dari bobot heatmap
+    
+    let parsedData = [];
+    try {
+      parsedData = JSON.parse(pointsJson);
+    } catch(e) {
+      console.error("Gagal parsing data heatmap:", e);
+      return;
+    }
+
+    // 1. Bersihkan marker "other" yang lama sebelum membuat baru
+    window.jaOtherMarkers.forEach(m => m.remove());
+    window.jaOtherMarkers = [];
+
+    // 2. Pisahkan data 'other' dan data heatmap biasa
+    const heatmapPoints = [];
+    const otherPoints = [];
+
+    parsedData.forEach(p => {
+      const lat = p.latitude || p.lat;
+      const lng = p.longitude || p.lng;
+      
+      if (p.category === 'other') {
+        otherPoints.push({
+          lat,
+          lng,
+          description: p.description || p.note || 'Laporan lainnya'
+        });
+      } else {
+        heatmapPoints.push({
+          type: 'Feature',
+          geometry: { 
+            type: 'Point', 
+            coordinates: [lng, lat] 
+          },
+          properties: { weight: weights[p.category] || 1 },
+        });
+      }
+    });
+    
+    const data = jaFeatureCollection(heatmapPoints);
 
     jaWhenMapReady(() => {
+      // 3. Render Heatmap Layer (Hanya untuk non-'other')
       const source = window.jaMap.getSource('ja-heatmap');
       if (source) {
         source.setData(data);
-        return;
+      } else {
+        window.jaMap.addSource('ja-heatmap', { type: 'geojson', data });
+        window.jaMap.addLayer({
+          id: 'ja-heatmap-layer',
+          type: 'heatmap',
+          source: 'ja-heatmap',
+          maxzoom: 18,
+          paint: {
+            'heatmap-weight': ['interpolate', ['linear'], ['get', 'weight'], 0, 0, 3, 1],
+            'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 9, 0.7, 16, 1.8],
+            'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 9, 18, 16, 34],
+            'heatmap-opacity': 0.78,
+            'heatmap-color': [
+              'interpolate', ['linear'], ['heatmap-density'],
+              0, 'rgba(37,99,235,0)',
+              0.25, '#60a5fa',
+              0.5, '#f59e0b',
+              0.78, '#f97316',
+              1, '#ef4444',
+            ],
+          },
+        });
       }
 
-      window.jaMap.addSource('ja-heatmap', { type: 'geojson', data });
-      window.jaMap.addLayer({
-        id: 'ja-heatmap-layer',
-        type: 'heatmap',
-        source: 'ja-heatmap',
-        maxzoom: 18,
-        paint: {
-          'heatmap-weight': ['interpolate', ['linear'], ['get', 'weight'], 0, 0, 3, 1],
-          'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 9, 0.7, 16, 1.8],
-          'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 9, 18, 16, 34],
-          'heatmap-opacity': 0.78,
-          'heatmap-color': [
-            'interpolate', ['linear'], ['heatmap-density'],
-            0, 'rgba(37,99,235,0)',
-            0.25, '#60a5fa',
-            0.5, '#f59e0b',
-            0.78, '#f97316',
-            1, '#ef4444',
-          ],
-        },
+      // 4. Render Marker khusus kategori 'other' (Warna Abu-abu + Pop-up Detail)
+      otherPoints.forEach(p => {
+        const color = '#64748b'; // Warna abu-abu (slate-500)
+        
+        // Buat element marker kustom
+        const el = document.createElement('button');
+        el.type = 'button';
+        el.setAttribute('aria-label', 'Laporan Lainnya');
+        el.style.cssText = [
+          'width:24px;height:24px;border-radius:50%;border:3px solid #fff',
+          `background:${color};color:#fff;font:900 12px/18px system-ui`,
+          'box-shadow:0 10px 18px rgba(15,23,42,.25);cursor:pointer',
+          'display:flex;align-items:center;justify-content:center;padding:0',
+        ].join(';');
+        el.textContent = 'i'; // Emoji penanda info
+
+        // Daftarkan pop-up detail yang muncul saat marker diklik
+        const popup = new maplibregl.Popup({ offset: 18, closeButton: false }).setHTML(
+          `<strong style="color:${color}">Laporan Lainnya</strong><br>` +
+          `<span style="color:#475569;font-size:12px;line-height:1.4">${p.description}</span>`
+        );
+
+        // Tambahkan marker ke peta
+        const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+          .setLngLat([p.lng, p.lat])
+          .setPopup(popup)
+          .addTo(window.jaMap);
+
+        // Simpan ke list tracker agar bisa di-clear nantinya
+        window.jaOtherMarkers.push(marker);
       });
     });
   };
@@ -238,7 +306,6 @@
     window.jaMap.easeTo({ center: [lng, lat], duration: 350 });
   };
 
-  // ── SOS alarm (local device) ─────────────────────────────────────────────────
   window.ja_playSOSAlarm = function () {
     if (navigator.vibrate) navigator.vibrate([800, 200, 800, 200, 800, 200, 800]);
     try {
@@ -259,7 +326,6 @@
     if (navigator.vibrate) navigator.vibrate(0);
   };
 
-  // ── Push notifications ───────────────────────────────────────────────────────
   window.ja_registerServiceWorker = async function () {
     if (!('serviceWorker' in navigator)) return null;
     try   { return await navigator.serviceWorker.register('/sw.js'); }
@@ -289,7 +355,6 @@
     return JSON.stringify(sub.toJSON());
   };
 
-  // ── Geolocation ──────────────────────────────────────────────────────────────
   window.ja_getCurrentPosition = function (callback) {
     if (!navigator.geolocation) { callback(null, null); return; }
     navigator.geolocation.getCurrentPosition(
@@ -299,7 +364,6 @@
     );
   };
 
-  // ── Clipboard ─────────────────────────────────────────────────────────────────
   window.ja_copyToClipboard = function (text) {
     if (navigator.clipboard) {
       navigator.clipboard.writeText(text).catch(console.warn);
@@ -312,7 +376,6 @@
     }
   };
 
-  // ── Device hash (persisted in localStorage) ──────────────────────────────────
   window.ja_getDeviceHash = function () {
     let h = localStorage.getItem('ja_device_hash');
     if (!h) {
