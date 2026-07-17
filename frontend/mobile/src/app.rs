@@ -247,6 +247,8 @@ fn Home() -> Element {
 
     use_effect(move || {
         spawn(async move {
+            request_app_permissions().await;
+            tokio::time::sleep(Duration::from_millis(900)).await;
             let hash = read_device_hash().await;
             device_hash.set(hash.clone());
             contacts_loading.set(true);
@@ -743,9 +745,13 @@ fn Home() -> Element {
                                 },
                             };
 
-                            start_sos_alarm().await;
-                            sos_active.set(true);
-                            sos_msg.set(Some("Alarm SOS aktif. Lokasi dan permintaan bantuan sedang dikirim ke kontak darurat.".to_string()));
+                        if let Err(err) = start_sos_alarm().await {
+                            sos_active.set(false);
+                            sos_msg.set(Some(err));
+                            return;
+                        }
+                        sos_active.set(true);
+                        sos_msg.set(Some("Alarm SOS aktif. Lokasi dan permintaan bantuan sedang dikirim ke kontak darurat.".to_string()));
 
                             let whatsapp_opened = open_whatsapp_sos(&whatsapp_contacts, point)
                                 .await
@@ -1570,6 +1576,10 @@ async fn read_location() -> Result<GeoPoint, String> {
                         return;
                     }
                     nativeError = native.error || '';
+                    if (/izin|permission|layanan lokasi|location service|gps/i.test(nativeError)) {
+                        resolve({ error: nativeError });
+                        return;
+                    }
                 }
             } catch (err) {
                 nativeError = err && err.message ? err.message : 'Lokasi native gagal dibaca.';
@@ -1614,15 +1624,36 @@ async fn read_location() -> Result<GeoPoint, String> {
 fn normalize_location_error(message: String) -> String {
     let lower = message.to_lowercase();
 
-    if lower.contains("only secure origins") {
-        return "Lokasi belum dapat dibaca. Aktifkan izin lokasi, lalu coba lagi.".to_string();
-    }
-
-    if lower.contains("permission") || lower.contains("denied") || lower.contains("ditolak") {
+    if lower.contains("permission")
+        || lower.contains("denied")
+        || lower.contains("ditolak")
+        || lower.contains("izin")
+    {
         return "Izin lokasi belum aktif. Izinkan lokasi untuk JalanAman, lalu coba lagi.".to_string();
     }
 
+    if lower.contains("gps")
+        || lower.contains("layanan lokasi")
+        || lower.contains("location service")
+    {
+        return "GPS belum aktif. Nyalakan Lokasi pada HP, lalu coba lagi.".to_string();
+    }
+
     "Lokasi belum tersedia. Pastikan GPS dan koneksi internet aktif, lalu coba lagi.".to_string()
+}
+
+async fn request_app_permissions() {
+    let _ = document::eval(
+        r#"
+        try {
+            if (window.JalanAmanNative && window.JalanAmanNative.requestAppPermissionsJson) {
+                window.JalanAmanNative.requestAppPermissionsJson();
+            }
+        } catch (_) {}
+        return true;
+        "#,
+    )
+    .await;
 }
 
 fn normalize_whatsapp_phone(value: &str) -> Option<String> {
@@ -1689,46 +1720,30 @@ async fn open_whatsapp_sos(contacts: &[EmergencyContact], point: GeoPoint) -> Re
     bool::deserialize(&value).map_err(|err| err.to_string())
 }
 
-async fn start_sos_alarm() {
-    let _ = document::eval(
+async fn start_sos_alarm() -> Result<(), String> {
+    let eval = document::eval(
         r#"
-            let nativeStarted = false;
-            try {
-                if (window.JalanAmanNative && window.JalanAmanNative.startSosAlarmJson) {
-                    const result = JSON.parse(window.JalanAmanNative.startSosAlarmJson());
-                    nativeStarted = !!result.ok;
-                }
-            } catch (_) {}
-
-            if (!nativeStarted) {
-                window.__jalanAmanSosAlarm = window.__jalanAmanSosAlarm || {};
-                const alarm = window.__jalanAmanSosAlarm;
-                if (alarm.timer) clearInterval(alarm.timer);
-                const ring = () => {
-                    try {
-                        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                        const now = ctx.currentTime;
-                        [880, 660, 880].forEach((freq, i) => {
-                            const osc = ctx.createOscillator();
-                            const gain = ctx.createGain();
-                            osc.type = 'square';
-                            osc.frequency.value = freq;
-                            gain.gain.value = 0.38;
-                            osc.connect(gain);
-                            gain.connect(ctx.destination);
-                            osc.start(now + i * 0.24);
-                            osc.stop(now + i * 0.24 + 0.18);
-                        });
-                    } catch (_) {}
-                    if (navigator.vibrate) navigator.vibrate([700, 180, 700, 180, 700]);
-                };
-                ring();
-                alarm.timer = setInterval(ring, 1900);
+        try {
+            if (window.JalanAmanNative && window.JalanAmanNative.startSosAlarmJson) {
+                const result = JSON.parse(window.JalanAmanNative.startSosAlarmJson());
+                return !!result.ok;
             }
-            return true;
+        } catch (_) {}
+        return false;
             "#,
-    )
-    .await;
+    );
+
+    let started = eval
+        .await
+        .ok()
+        .and_then(|value| bool::deserialize(&value).ok())
+        .unwrap_or(false);
+
+    if started {
+        Ok(())
+    } else {
+        Err("Alarm SOS belum dapat dimulai. Pastikan izin notifikasi dan suara untuk JalanAman sudah diizinkan, lalu coba lagi.".to_string())
+    }
 }
 
 async fn is_sos_alarm_active() -> bool {
@@ -1759,10 +1774,6 @@ fn stop_sos_alarm() {
                     window.JalanAmanNative.stopSosAlarmJson();
                 }
             } catch (_) {}
-            if (window.__jalanAmanSosAlarm && window.__jalanAmanSosAlarm.timer) {
-                clearInterval(window.__jalanAmanSosAlarm.timer);
-                window.__jalanAmanSosAlarm.timer = null;
-            }
             if (navigator.vibrate) navigator.vibrate(0);
             return true;
             "#,
@@ -1928,9 +1939,11 @@ fn map_srcdoc(
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     html, body, #map { margin:0; width:100%; height:100%; overflow:hidden; background:#dbeafe; }
-    #map { position:relative; font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+    #map { position:relative; touch-action:none; cursor:grab; font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+    #map.dragging { cursor:grabbing; }
+    #viewport { position:absolute; inset:0; }
     #tiles, #overlay, #points { position:absolute; inset:0; }
-    #tiles img { position:absolute; width:256px; height:256px; image-rendering:auto; }
+    #tiles img { position:absolute; width:256px; height:256px; image-rendering:auto; user-select:none; -webkit-user-drag:none; pointer-events:none; }
     #overlay { pointer-events:none; z-index:3; }
     #points { z-index:4; pointer-events:none; }
     #fallback { position:absolute; inset:0; z-index:6; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:24px; box-sizing:border-box; background:#e0f2fe; color:#0f172a; font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; text-align:center; }
@@ -1940,13 +1953,22 @@ fn map_srcdoc(
     .me { position:absolute; width:18px; height:18px; margin:-9px 0 0 -9px; border-radius:50%; background:#1d4ed8; border:3px solid #fff; box-shadow:0 0 0 14px rgba(37,99,235,.17),0 10px 22px rgba(15,23,42,.26); }
     .route-end { position:absolute; width:28px; height:28px; margin:-28px 0 0 -14px; border-radius:9px 9px 9px 2px; transform:rotate(-45deg); background:#1d4ed8; border:3px solid #fff; box-shadow:0 12px 22px rgba(15,23,42,.25); display:flex; align-items:center; justify-content:center; }
     .route-end span { transform:rotate(45deg); color:#fff; font:900 12px system-ui; }
+    #zoomctl { position:absolute; right:10px; top:50%; transform:translateY(-50%); z-index:5; display:flex; flex-direction:column; border-radius:10px; overflow:hidden; box-shadow:0 10px 20px rgba(15,23,42,.22); }
+    #zoomctl button { display:block; width:34px; height:34px; border:0; background:rgba(255,255,255,0.96); color:#1d4ed8; font:900 18px/34px system-ui; padding:0; }
+    #zoomctl button:first-child { border-bottom:1px solid #dbeafe; }
   </style>
 </head>
 <body>
 <div id="map">
-  <div id="tiles"></div>
-  <svg id="overlay"></svg>
-  <div id="points"></div>
+  <div id="viewport">
+    <div id="tiles"></div>
+    <svg id="overlay"></svg>
+    <div id="points"></div>
+  </div>
+  <div id="zoomctl">
+    <button id="zoomIn" type="button">+</button>
+    <button id="zoomOut" type="button">&minus;</button>
+  </div>
   <div id="fallback"><strong>Memuat peta</strong><span>Menyiapkan jalan dan laporan di sekitarmu.</span></div>
 </div>
 <script>
@@ -1955,10 +1977,15 @@ const reports = __REPORTS__;
 const route = __ROUTE__;
 const routeLevel = __ROUTE_LEVEL__;
 const mapEl = document.getElementById('map');
+const viewportEl = document.getElementById('viewport');
 const tilesEl = document.getElementById('tiles');
 const pointsEl = document.getElementById('points');
 const overlay = document.getElementById('overlay');
 const fallback = document.getElementById('fallback');
+const MIN_ZOOM = 3;
+const MAX_ZOOM = 18;
+let activeCenter = null;
+let activeZoom = null;
 function showFallback(title, body) {
   fallback.style.display = 'flex';
   fallback.innerHTML = `<strong>${title}</strong><span>${body}</span>`;
@@ -1981,6 +2008,14 @@ function project(lng, lat, zoomLevel) {
     x: (lng + 180) / 360 * scale,
     y: (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * scale,
   };
+}
+
+function unproject(x, y, zoomLevel) {
+  const scale = tileSize * (2 ** zoomLevel);
+  const lng = x / scale * 360 - 180;
+  const n = Math.PI - (2 * Math.PI * y) / scale;
+  const lat = (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+  return [lng, lat];
 }
 
 function chooseViewport(width, height) {
@@ -2060,12 +2095,22 @@ function drawRoute(centerPx, width, height, zoomLevel) {
   }
 }
 
-function renderMap() {
+function renderMap(overrideCenter, overrideZoom) {
   const width = mapEl.clientWidth || 360;
   const height = mapEl.clientHeight || 360;
-  const viewport = chooseViewport(width, height);
-  const center = viewport.center;
-  const zoom = viewport.zoom;
+  let center;
+  let zoom;
+  if (overrideCenter && Number.isFinite(overrideZoom)) {
+    center = overrideCenter;
+    zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, overrideZoom));
+  } else {
+    const viewport = chooseViewport(width, height);
+    center = viewport.center;
+    zoom = viewport.zoom;
+  }
+  activeCenter = center;
+  activeZoom = zoom;
+  viewportEl.style.transform = 'translate(0px, 0px)';
   const worldTiles = 2 ** zoom;
   const centerPx = project(center[0], center[1], zoom);
   const startX = Math.floor((centerPx.x - width / 2) / tileSize);
@@ -2121,6 +2166,75 @@ function renderMap() {
     if (loaded === 0) showFallback('Peta belum termuat', 'Cek koneksi internet lalu coba refresh peta.');
   }, 6000);
 }
+
+function pointFromEvent(evt) {
+  if (evt.changedTouches && evt.changedTouches.length) {
+    return { x: evt.changedTouches[0].clientX, y: evt.changedTouches[0].clientY };
+  }
+  if (evt.touches && evt.touches.length) {
+    return { x: evt.touches[0].clientX, y: evt.touches[0].clientY };
+  }
+  return { x: evt.clientX, y: evt.clientY };
+}
+
+let dragging = false;
+let dragStart = null;
+let dragCenterPx = null;
+let dragMoved = false;
+
+function onDragStart(evt) {
+  if (evt.touches && evt.touches.length > 1) return;
+  dragging = true;
+  dragMoved = false;
+  dragStart = pointFromEvent(evt);
+  dragCenterPx = project(activeCenter[0], activeCenter[1], activeZoom);
+  mapEl.classList.add('dragging');
+}
+
+function onDragMove(evt) {
+  if (!dragging) return;
+  const p = pointFromEvent(evt);
+  const dx = p.x - dragStart.x;
+  const dy = p.y - dragStart.y;
+  if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragMoved = true;
+  viewportEl.style.transform = `translate(${dx}px, ${dy}px)`;
+  if (evt.cancelable) evt.preventDefault();
+}
+
+function onDragEnd(evt) {
+  if (!dragging) return;
+  dragging = false;
+  mapEl.classList.remove('dragging');
+  if (!dragMoved) {
+    viewportEl.style.transform = 'translate(0px, 0px)';
+    return;
+  }
+  const p = pointFromEvent(evt);
+  const dx = p.x - dragStart.x;
+  const dy = p.y - dragStart.y;
+  const newCenter = unproject(dragCenterPx.x - dx, dragCenterPx.y - dy, activeZoom);
+  renderMap(newCenter, activeZoom);
+}
+
+mapEl.addEventListener('mousedown', onDragStart);
+window.addEventListener('mousemove', onDragMove);
+window.addEventListener('mouseup', onDragEnd);
+mapEl.addEventListener('touchstart', onDragStart, { passive: true });
+mapEl.addEventListener('touchmove', onDragMove, { passive: false });
+mapEl.addEventListener('touchend', onDragEnd);
+mapEl.addEventListener('touchcancel', onDragEnd);
+mapEl.addEventListener('wheel', (evt) => {
+  evt.preventDefault();
+  const delta = evt.deltaY < 0 ? 1 : -1;
+  renderMap(activeCenter, activeZoom + delta);
+}, { passive: false });
+mapEl.addEventListener('dblclick', (evt) => {
+  evt.preventDefault();
+  renderMap(activeCenter, activeZoom + 1);
+});
+
+document.getElementById('zoomIn').addEventListener('click', () => renderMap(activeCenter, activeZoom + 1));
+document.getElementById('zoomOut').addEventListener('click', () => renderMap(activeCenter, activeZoom - 1));
 
 try {
   renderMap();
