@@ -34,8 +34,8 @@ services:
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: ./backend                  # <-- Diubah ke root workspace
+      dockerfile: Dockerfile # <-- Diubah jalurnya
     container_name: jalanaman_backend
     restart: unless-stopped
     depends_on:
