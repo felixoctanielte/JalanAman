@@ -118,16 +118,28 @@ pub fn Dashboard() -> Element {
 
 #[component]
 fn StatCard(icon: &'static str, label: &'static str, count: usize, color: &'static str) -> Element {
-    let (bg, text) = match color {
-        "red" => ("bg-red-50 border-red-100", "text-red-700"),
-        "orange" => ("bg-orange-50 border-orange-100", "text-orange-700"),
-        "yellow" => ("bg-yellow-50 border-yellow-100", "text-yellow-700"),
-        _ => ("bg-gray-50 border-gray-100", "text-gray-700"),
+    let (card_class, count_class) = match color {
+        "red" => (
+            "border bg-red-50 border-red-100 rounded-2xl p-4",
+            "text-2xl font-black text-red-700",
+        ),
+        "orange" => (
+            "border bg-orange-50 border-orange-100 rounded-2xl p-4",
+            "text-2xl font-black text-orange-700",
+        ),
+        "yellow" => (
+            "border bg-yellow-50 border-yellow-100 rounded-2xl p-4",
+            "text-2xl font-black text-yellow-700",
+        ),
+        _ => (
+            "border bg-gray-50 border-gray-100 rounded-2xl p-4",
+            "text-2xl font-black text-gray-700",
+        ),
     };
     rsx! {
-        div { class: "border {bg} rounded-2xl p-4",
+        div { class: card_class,
             div { class: "text-2xl mb-1", "{icon}" }
-            div { class: "text-2xl font-black {text}", "{count}" }
+            div { class: count_class, "{count}" }
             div { class: "text-xs text-gray-500 mt-0.5", "{label}" }
         }
     }

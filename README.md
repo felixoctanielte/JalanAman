@@ -51,8 +51,8 @@ Aplikasi mobile PWA + dashboard web berbasis laporan komunitas (*crowd-sourced*)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 rustup target add wasm32-unknown-unknown
 
-# Dioxus CLI (pengganti Trunk)
-cargo install dioxus-cli
+# Dioxus CLI 0.6.x sesuai lockfile project
+cargo install dioxus-cli --version 0.6.3 --locked
 
 # sqlx CLI (migrasi database)
 cargo install sqlx-cli --no-default-features --features native-tls,postgres
@@ -62,6 +62,7 @@ cargo install cargo-watch
 
 # Node.js >= 18 (untuk build Tailwind CSS)
 node --version
+cd frontend/web && npm ci && cd ../..
 
 # Docker & Docker Compose
 docker --version
@@ -101,11 +102,20 @@ cd backend && sqlx migrate run
 make dev-backend       # cargo watch -x run di port 8080
 
 # Terminal 2 – frontend web
-make dev-web           # build Tailwind + dx serve di port 8080 (proxy ke backend)
-# Buka http://localhost:8080
+make dev-web           # build Tailwind + dx serve, lalu buka Chrome
 
-# Terminal 3 – mobile Android (opsional, butuh Android SDK)
-make dev-android       # dx serve --platform android
+# Terminal 3 – mobile Android WSL (opsional)
+make dev-android       # wrapper android/serve-android-wsl.sh
+```
+
+Kalau jalan manual, masuk ke folder targetnya:
+
+```bash
+cd frontend/web
+bash serve-web-wsl.sh  # buka Chrome di http://localhost:8080
+
+cd ../mobile
+dx serve               # shell wrapper menambahkan --platform android
 ```
 
 ### 5. Full Docker stack
@@ -213,6 +223,7 @@ JalanAman/
 │   │   └── Dioxus.toml
 │   └── mobile/                Android/iOS (dx serve --platform android/ios)
 │       ├── src/main.rs
+│       ├── android/           Script SDK/NDK + wrapper Android WSL
 │       └── Dioxus.toml
 ├── nginx/nginx.conf
 ├── docker-compose.yml

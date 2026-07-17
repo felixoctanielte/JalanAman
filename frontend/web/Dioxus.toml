@@ -7,7 +7,7 @@ title     = "JalanAman – Rute Teraman"
 base_path = "/"
 
 [web.resource]
-style  = []
+style  = ["assets/tw.css"]
 script = []
 
 [web.resource.dev]

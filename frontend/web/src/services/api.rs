@@ -15,6 +15,19 @@ pub async fn get_reports(lat: f64, lng: f64, radius: f64) -> Result<Vec<Report>,
     .await
 }
 
+pub async fn get_directions(
+    origin_lat: f64,
+    origin_lng: f64,
+    destination: &str,
+    mode: &str,
+) -> Result<DirectionsResponse, String> {
+    let destination = urlencoding::encode(destination);
+    req_get(&format!(
+        "{BASE}/directions?origin_lat={origin_lat}&origin_lng={origin_lng}&destination={destination}&mode={mode}"
+    ))
+    .await
+}
+
 pub async fn create_report(p: &CreateReportPayload) -> Result<Report, String> {
     let resp = Request::post(&format!("{BASE}/reports"))
         .json(p)
@@ -96,6 +109,7 @@ pub async fn add_contact(
             device_hash: device_hash.to_string(),
             name: name.to_string(),
             email,
+            phone: None,
         })
         .map_err(|e| e.to_string())?
         .send()

@@ -1,20 +1,13 @@
 use dioxus::prelude::*;
 use jalanaman_shared::{
     components::{report_form::ReportForm, route_score::RouteScorePanel, sos_button::SosButton},
-    Report, RouteScoreResponse, Waypoint,
+    Report, RouteScoreResponse,
 };
-use wasm_bindgen_futures::JsFuture;
 
 use crate::{
     app::Route, components::map::MapView, hooks::use_geolocation::use_geolocation, services::api,
     utils::device::get_device_hash, utils::js,
 };
-
-#[derive(serde::Deserialize)]
-struct DirectionsResult {
-    waypoints: Vec<Waypoint>,
-    polyline: Vec<Waypoint>,
-}
 
 #[component]
 pub fn Home() -> Element {
@@ -32,7 +25,7 @@ pub fn Home() -> Element {
     // Prevent double-init when location signal fires multiple times
     let mut map_inited = use_signal(|| false);
 
-    // Leaflet loads from CDN synchronously → init_map can be called immediately
+    // MapLibre loads from CDN synchronously → init_map can be called immediately
     // once geolocation resolves.
     use_effect(move || {
         let loc = *location.read();
@@ -100,32 +93,25 @@ pub fn Home() -> Element {
                             route_result.set(None);
 
                             let loc_val = *location.read();
-                            let origin = loc_val
-                                .map(|(la, lo)| format!("{la},{lo}"))
-                                .unwrap_or_else(|| "Jakarta Pusat".to_string());
 
                             spawn(async move {
-                                match JsFuture::from(js::get_directions(&origin, &dest, "walking")).await {
-                                    Err(e) => {
-                                        route_error.set(Some(format!("Rute tidak ditemukan: {e:?}")));
-                                    }
-                                    Ok(val) => {
-                                        let json_str = val.as_string().unwrap_or_default();
-                                        match serde_json::from_str::<DirectionsResult>(&json_str) {
-                                            Err(e) => route_error.set(Some(format!("Parse error: {e}"))),
-                                            Ok(dirs) => {
-                                                match api::calculate_route_score(dirs.waypoints).await {
-                                                    Ok(score) => {
-                                                        let pts = serde_json::to_string(&dirs.polyline)
-                                                            .unwrap_or_default();
-                                                        js::draw_route_polyline(&pts, &score.level);
-                                                        route_result.set(Some(score));
-                                                    }
-                                                    Err(e) => route_error.set(Some(e)),
-                                                }
-                                            }
+                                let Some((origin_lat, origin_lng)) = loc_val else {
+                                    route_error.set(Some("Aktifkan izin lokasi dulu untuk cek rute.".to_string()));
+                                    route_loading.set(false);
+                                    return;
+                                };
+
+                                match api::get_directions(origin_lat, origin_lng, &dest, "walking").await {
+                                    Err(e) => route_error.set(Some(e)),
+                                    Ok(dirs) => match api::calculate_route_score(dirs.polyline.clone()).await {
+                                        Ok(score) => {
+                                            let pts = serde_json::to_string(&dirs.polyline)
+                                                .unwrap_or_default();
+                                            js::draw_route_polyline(&pts, &score.level);
+                                            route_result.set(Some(score));
                                         }
-                                    }
+                                        Err(e) => route_error.set(Some(e)),
+                                    },
                                 }
                                 route_loading.set(false);
                             });

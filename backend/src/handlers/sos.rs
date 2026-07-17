@@ -71,7 +71,7 @@ pub async fn trigger_sos(
 
     let contacts = sqlx::query_as::<_, EmergencyContact>(
         r#"
-        SELECT id, device_hash, name, email, contact_device_hash, push_endpoint,
+        SELECT id, device_hash, name, email, phone, contact_device_hash, push_endpoint,
                push_p256dh, push_auth, invite_token, created_at
         FROM emergency_contacts
         WHERE device_hash = $1
@@ -158,7 +158,9 @@ pub async fn trigger_sos(
 
         results.push(ContactNotifyResult {
             name: contact.name.clone(),
-            connected: contact.push_endpoint.is_some() || contact.email.is_some(),
+            connected: contact.push_endpoint.is_some()
+                || contact.email.is_some()
+                || contact.phone.is_some(),
             push_sent,
             email_sent,
             error: error_msg,
@@ -244,15 +246,16 @@ pub async fn add_contact(
 
     let contact = sqlx::query_as::<_, EmergencyContact>(
         r#"
-        INSERT INTO emergency_contacts (device_hash, name, email, invite_token)
-        VALUES ($1, $2, $3, $4)
-        RETURNING id, device_hash, name, email, contact_device_hash, push_endpoint,
+        INSERT INTO emergency_contacts (device_hash, name, email, phone, invite_token)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING id, device_hash, name, email, phone, contact_device_hash, push_endpoint,
                   push_p256dh, push_auth, invite_token, created_at
         "#,
     )
     .bind(&payload.device_hash)
     .bind(&payload.name)
     .bind(&payload.email)
+    .bind(&payload.phone)
     .bind(&invite_token)
     .fetch_one(&state.db)
     .await?;
@@ -289,7 +292,7 @@ pub async fn get_contacts(
 ) -> Result<Json<Vec<EmergencyContact>>, AppError> {
     let contacts = sqlx::query_as::<_, EmergencyContact>(
         r#"
-        SELECT id, device_hash, name, email, contact_device_hash, push_endpoint,
+        SELECT id, device_hash, name, email, phone, contact_device_hash, push_endpoint,
                push_p256dh, push_auth, invite_token, created_at
         FROM emergency_contacts
         WHERE device_hash = $1
@@ -350,7 +353,7 @@ pub async fn get_invite_info(
 ) -> Result<Json<InviteInfo>, AppError> {
     let contact = sqlx::query_as::<_, EmergencyContact>(
         r#"
-        SELECT id, device_hash, name, email, contact_device_hash, push_endpoint,
+        SELECT id, device_hash, name, email, phone, contact_device_hash, push_endpoint,
                push_p256dh, push_auth, invite_token, created_at
         FROM emergency_contacts
         WHERE invite_token = $1

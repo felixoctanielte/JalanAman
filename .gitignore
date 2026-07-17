@@ -8,5 +8,5 @@ frontend/mobile/target/
 node_modules/
 dist/
 sqlx-data.json
-# Tailwind generated output (rebuilt by Trunk pre_build hook)
+# Tailwind generated output (rebuilt by npm run tailwind:build)
 frontend/web/assets/tw.css
