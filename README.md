@@ -272,7 +272,10 @@ The main product behavior, route-safety logic, anti-abuse rules, emergency conta
 
 ## Team
 
-Add team member names here.
+Farrel Nayaka
+Felix Octaniel Telaumbanua
+Aryabell Boston Tjugito
+Ignatius Rayden Indigo Reygantha
 
 ---
 
