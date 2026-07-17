@@ -29,3 +29,17 @@ ANDROID_APP_DIR="$MOBILE_DIR/target/dx/jalanaman_mobile/debug/android/app"
 if [ -x "$ANDROID_APP_DIR/gradlew" ]; then
   (cd "$ANDROID_APP_DIR" && ./gradlew assembleDebug)
 fi
+
+APK_PATH="$ANDROID_APP_DIR/app/build/outputs/apk/debug/app-debug.apk"
+if [ ! -f "$APK_PATH" ]; then
+  echo "APK debug tidak ditemukan setelah build: $APK_PATH" >&2
+  exit 1
+fi
+
+AAPT_PATH="$(find "$ANDROID_HOME/build-tools" -maxdepth 2 -type f -name aapt 2>/dev/null | sort -V | tail -n 1)"
+if [ -n "$AAPT_PATH" ] && ! "$AAPT_PATH" dump permissions "$APK_PATH" | grep -q "android.permission.ACCESS_FINE_LOCATION"; then
+  echo "APK dibuat tanpa izin lokasi. Patch Android belum ikut terpaketkan." >&2
+  exit 1
+fi
+
+echo "APK siap dipasang: $APK_PATH"
