@@ -30,6 +30,7 @@ enum MobileTab {
     Report,
     Contacts,
     Profile,
+    Help,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -44,6 +45,410 @@ enum NavIconKind {
     Route,
     Contacts,
     Profile,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Language {
+    Indonesian,
+    English,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum CopyKey {
+    HeaderSubtitle,
+    LanguageToggleTitle,
+    SplashSubtitle,
+    MapNav,
+    RouteNav,
+    ContactsNav,
+    AccountNav,
+    HeaderHelpTitle,
+    HelpTitle,
+    HelpSubtitle,
+    TutorialVideo,
+    VideoUnavailable,
+    MapLoading,
+    ReportsActiveRadius,
+    GpsUnavailable,
+    LiveMap,
+    QuickReportTitle,
+    ManualLocation,
+    UsePhoneCoordinates,
+    Fallback,
+    ManualLocationBody,
+    UseThisLocation,
+    NearbyReports,
+    Loading,
+    Live,
+    NoNearbyReports,
+    RefreshGpsReports,
+    LastRouteOverlay,
+    RouteReportsSuffix,
+    SearchDestination,
+    SearchDestinationPlaceholder,
+    SearchingPlaces,
+    CheckSafeRoute,
+    CheckingRoute,
+    SafeRouteMapTitle,
+    LiveRoute,
+    RouteScore,
+    RouteSafetyStatus,
+    NotChecked,
+    Weight,
+    Status,
+    Reports,
+    EnterDestinationHint,
+    RouteDetails,
+    Distance,
+    Estimate,
+    Mode,
+    Walking,
+    GpsReady,
+    GpsNotReady,
+    QuickReport,
+    ReportCategory,
+    OptionalNote,
+    Max100,
+    Sending,
+    SubmitReport,
+    ReportPreview,
+    EmergencyContacts,
+    ContactsSaved,
+    NoContacts,
+    RefreshContacts,
+    AddSosContact,
+    ContactName,
+    ContactEmail,
+    ContactPhone,
+    Saving,
+    AddContact,
+    AccountPrivacy,
+    Anonymous,
+    Protected,
+    Location,
+    Nearby,
+    SosContacts,
+    SafetySettings,
+    NearbyMap,
+    Active,
+    SosAlerts,
+    ReadyToUse,
+    LocationNotice,
+    SosActiveTitle,
+    SosStatusTitle,
+    SosActiveBody,
+    SosClosedBody,
+    StopAlarm,
+    Close,
+    SosStillActive,
+    PreparingHelp,
+    SosStopped,
+    AppPreparing,
+    PreparingSosLocation,
+    SosLocationMissing,
+    SosActiveSending,
+    WhatsappSent,
+    WhatsappFallback,
+    SosNotified,
+    SosNoChannel,
+    SosBackendFallback,
+    SosStaySafe,
+    DestinationMin,
+    RouteNeedsLocation,
+    RouteFallbackScore,
+    ReportNeedsLocation,
+    ContactNameMin,
+    ContactChannelRequired,
+}
+
+impl Language {
+    const fn toggled(self) -> Self {
+        match self {
+            Self::Indonesian => Self::English,
+            Self::English => Self::Indonesian,
+        }
+    }
+
+    const fn is_indonesian(self) -> bool {
+        matches!(self, Self::Indonesian)
+    }
+
+    const fn text(self, key: CopyKey) -> &'static str {
+        match self {
+            Self::Indonesian => match key {
+                CopyKey::HeaderSubtitle => "Temukan rute yang lebih aman",
+                CopyKey::LanguageToggleTitle => "Ganti bahasa",
+                CopyKey::SplashSubtitle => "Melangkah dengan rasa aman.",
+                CopyKey::MapNav => "Peta",
+                CopyKey::RouteNav => "Rute",
+                CopyKey::ContactsNav => "Kontak",
+                CopyKey::AccountNav => "Akun",
+                CopyKey::HeaderHelpTitle => "Bantuan",
+                CopyKey::HelpTitle => "Bantuan JalanAman",
+                CopyKey::HelpSubtitle => "Video tutorial singkat untuk memakai fitur utama.",
+                CopyKey::TutorialVideo => "Video tutorial",
+                CopyKey::VideoUnavailable => "Video tidak dapat diputar di perangkat ini.",
+                CopyKey::MapLoading => "Memuat peta dan laporan",
+                CopyKey::ReportsActiveRadius => "laporan aktif radius 800 m",
+                CopyKey::GpsUnavailable => "GPS belum tersedia",
+                CopyKey::LiveMap => "Peta langsung",
+                CopyKey::QuickReportTitle => "Lapor cepat",
+                CopyKey::ManualLocation => "Lokasi manual",
+                CopyKey::UsePhoneCoordinates => "Pakai koordinat HP",
+                CopyKey::Fallback => "Fallback",
+                CopyKey::ManualLocationBody => {
+                    "Lokasi belum tersedia. Aktifkan izin lokasi atau masukkan koordinat untuk melanjutkan."
+                }
+                CopyKey::UseThisLocation => "Pakai lokasi ini",
+                CopyKey::NearbyReports => "Laporan terdekat",
+                CopyKey::Loading => "Loading",
+                CopyKey::Live => "Live",
+                CopyKey::NoNearbyReports => "Belum ada laporan aktif dari user lain di radius ini.",
+                CopyKey::RefreshGpsReports => "Refresh GPS & laporan",
+                CopyKey::LastRouteOverlay => "Overlay rute terakhir",
+                CopyKey::RouteReportsSuffix => "laporan di rute",
+                CopyKey::SearchDestination => "Cari tujuan",
+                CopyKey::SearchDestinationPlaceholder => "Cari tempat atau alamat",
+                CopyKey::SearchingPlaces => "Mencari tempat...",
+                CopyKey::CheckSafeRoute => "Cek rute aman",
+                CopyKey::CheckingRoute => "Mengecek rute...",
+                CopyKey::SafeRouteMapTitle => "Peta rute aman",
+                CopyKey::LiveRoute => "Rute langsung",
+                CopyKey::RouteScore => "Skor rute",
+                CopyKey::RouteSafetyStatus => "Status keamanan rute",
+                CopyKey::NotChecked => "Belum dicek",
+                CopyKey::Weight => "Bobot",
+                CopyKey::Status => "Status",
+                CopyKey::Reports => "Laporan",
+                CopyKey::EnterDestinationHint => "Masukkan tujuan untuk melihat skor keamanan rute.",
+                CopyKey::RouteDetails => "Detail rute",
+                CopyKey::Distance => "Jarak",
+                CopyKey::Estimate => "Estimasi",
+                CopyKey::Mode => "Mode",
+                CopyKey::Walking => "Jalan kaki",
+                CopyKey::GpsReady => "GPS siap",
+                CopyKey::GpsNotReady => "GPS belum siap",
+                CopyKey::QuickReport => "Lapor cepat",
+                CopyKey::ReportCategory => "Kategori laporan",
+                CopyKey::OptionalNote => "Catatan opsional",
+                CopyKey::Max100 => "Maks 100 karakter",
+                CopyKey::Sending => "Mengirim...",
+                CopyKey::SubmitReport => "Kirim laporan",
+                CopyKey::ReportPreview => "Preview laporan",
+                CopyKey::EmergencyContacts => "Kontak darurat",
+                CopyKey::ContactsSaved => "kontak tersimpan",
+                CopyKey::NoContacts => {
+                    "Belum ada kontak. Tambahkan email atau nomor WhatsApp agar SOS bisa mengirim alert."
+                }
+                CopyKey::RefreshContacts => "Refresh kontak",
+                CopyKey::AddSosContact => "Tambah kontak SOS",
+                CopyKey::ContactName => "Nama kontak",
+                CopyKey::ContactEmail => "Email kontak",
+                CopyKey::ContactPhone => "Nomor WhatsApp, contoh 08123456789",
+                CopyKey::Saving => "Menyimpan...",
+                CopyKey::AddContact => "Tambah kontak",
+                CopyKey::AccountPrivacy => "Akun & privasi",
+                CopyKey::Anonymous => "Kamu tetap anonim",
+                CopyKey::Protected => "Terlindungi",
+                CopyKey::Location => "Lokasi",
+                CopyKey::Nearby => "Di sekitar",
+                CopyKey::SosContacts => "Kontak SOS",
+                CopyKey::SafetySettings => "Pengaturan keamanan",
+                CopyKey::NearbyMap => "Peta sekitar",
+                CopyKey::Active => "Aktif",
+                CopyKey::SosAlerts => "Peringatan SOS",
+                CopyKey::ReadyToUse => "Siap digunakan",
+                CopyKey::LocationNotice => {
+                    "Lokasi belum tersedia. Aktifkan izin lokasi agar peta dan SOS bekerja akurat."
+                }
+                CopyKey::SosActiveTitle => "SOS sedang aktif",
+                CopyKey::SosStatusTitle => "Status SOS",
+                CopyKey::SosActiveBody => "Alarm dan getaran akan terus aktif sampai dihentikan.",
+                CopyKey::SosClosedBody => "Kamu dapat menutup pemberitahuan ini.",
+                CopyKey::StopAlarm => "Hentikan alarm",
+                CopyKey::Close => "Tutup",
+                CopyKey::SosStillActive => {
+                    "Alarm SOS masih aktif. Hentikan lewat tombol ini atau notifikasi sistem."
+                }
+                CopyKey::PreparingHelp => "Kami sedang menyiapkan bantuan untukmu.",
+                CopyKey::SosStopped => "Alarm SOS sudah dihentikan.",
+                CopyKey::AppPreparing => "Aplikasi sedang disiapkan. Coba lagi sebentar.",
+                CopyKey::PreparingSosLocation => "Menyiapkan SOS dengan lokasi terkini...",
+                CopyKey::SosLocationMissing => {
+                    "Lokasi belum didapatkan. Aktifkan izin lokasi, lalu coba SOS lagi."
+                }
+                CopyKey::SosActiveSending => {
+                    "Alarm SOS aktif. Lokasi dan permintaan bantuan sedang dikirim ke kontak darurat."
+                }
+                CopyKey::WhatsappSent => {
+                    "Permintaan bantuan otomatis terkirim via WhatsApp. Alarm tetap aktif sampai dihentikan."
+                }
+                CopyKey::WhatsappFallback => {
+                    "Kontak darurat sudah diproses. WhatsApp dibuka sebagai fallback karena auto-send belum tersedia untuk nomor ini. Alarm tetap aktif sampai dihentikan."
+                }
+                CopyKey::SosNotified => {
+                    "Permintaan bantuan dikirim ke kontak darurat. Alarm tetap aktif sampai dihentikan."
+                }
+                CopyKey::SosNoChannel => {
+                    "Alarm tetap aktif, tetapi belum ada kanal otomatis yang berhasil. Pastikan backend/WhatsApp API aktif atau hubungi orang terdekat."
+                }
+                CopyKey::SosBackendFallback => {
+                    "Backend belum terhubung. WhatsApp dibuka sebagai fallback agar pesan bisa segera dikirim. Alarm tetap aktif sampai dihentikan."
+                }
+                CopyKey::SosStaySafe => {
+                    "Alarm tetap aktif. Pastikan koneksi internet lalu hubungi orang terdekat di sekitarmu."
+                }
+                CopyKey::DestinationMin => "Tujuan minimal 3 karakter.",
+                CopyKey::RouteNeedsLocation => {
+                    "Lokasi belum tersedia. Isi koordinat manual di tab Peta dulu."
+                }
+                CopyKey::RouteFallbackScore => {
+                    "Rute tetap tampil. Skor sementara dihitung dari laporan di sekitar kamu."
+                }
+                CopyKey::ReportNeedsLocation => {
+                    "Lokasi belum tersedia. Isi koordinat manual di tab Peta dulu."
+                }
+                CopyKey::ContactNameMin => "Nama kontak minimal 2 karakter.",
+                CopyKey::ContactChannelRequired => "Isi email atau nomor WhatsApp kontak.",
+            },
+            Self::English => match key {
+                CopyKey::HeaderSubtitle => "Find safer routes",
+                CopyKey::LanguageToggleTitle => "Switch language",
+                CopyKey::SplashSubtitle => "Move with confidence.",
+                CopyKey::MapNav => "Map",
+                CopyKey::RouteNav => "Route",
+                CopyKey::ContactsNav => "Contacts",
+                CopyKey::AccountNav => "Account",
+                CopyKey::HeaderHelpTitle => "Help",
+                CopyKey::HelpTitle => "JalanAman Help",
+                CopyKey::HelpSubtitle => "A short tutorial video for the main features.",
+                CopyKey::TutorialVideo => "Tutorial video",
+                CopyKey::VideoUnavailable => "Video cannot be played on this device.",
+                CopyKey::MapLoading => "Loading map and reports",
+                CopyKey::ReportsActiveRadius => "active reports within 800 m",
+                CopyKey::GpsUnavailable => "GPS unavailable",
+                CopyKey::LiveMap => "Live map",
+                CopyKey::QuickReportTitle => "Quick report",
+                CopyKey::ManualLocation => "Manual location",
+                CopyKey::UsePhoneCoordinates => "Use phone coordinates",
+                CopyKey::Fallback => "Fallback",
+                CopyKey::ManualLocationBody => {
+                    "Location is unavailable. Enable location permission or enter coordinates to continue."
+                }
+                CopyKey::UseThisLocation => "Use this location",
+                CopyKey::NearbyReports => "Nearby reports",
+                CopyKey::Loading => "Loading",
+                CopyKey::Live => "Live",
+                CopyKey::NoNearbyReports => "No active reports from other users in this radius.",
+                CopyKey::RefreshGpsReports => "Refresh GPS & reports",
+                CopyKey::LastRouteOverlay => "Last route overlay",
+                CopyKey::RouteReportsSuffix => "reports on route",
+                CopyKey::SearchDestination => "Search destination",
+                CopyKey::SearchDestinationPlaceholder => "Search place or address",
+                CopyKey::SearchingPlaces => "Searching places...",
+                CopyKey::CheckSafeRoute => "Check safer route",
+                CopyKey::CheckingRoute => "Checking route...",
+                CopyKey::SafeRouteMapTitle => "Safe route map",
+                CopyKey::LiveRoute => "Live route",
+                CopyKey::RouteScore => "Route score",
+                CopyKey::RouteSafetyStatus => "Route safety status",
+                CopyKey::NotChecked => "Not checked",
+                CopyKey::Weight => "Weight",
+                CopyKey::Status => "Status",
+                CopyKey::Reports => "Reports",
+                CopyKey::EnterDestinationHint => "Enter a destination to see the route safety score.",
+                CopyKey::RouteDetails => "Route details",
+                CopyKey::Distance => "Distance",
+                CopyKey::Estimate => "Estimate",
+                CopyKey::Mode => "Mode",
+                CopyKey::Walking => "Walking",
+                CopyKey::GpsReady => "GPS ready",
+                CopyKey::GpsNotReady => "GPS not ready",
+                CopyKey::QuickReport => "Quick report",
+                CopyKey::ReportCategory => "Report category",
+                CopyKey::OptionalNote => "Optional note",
+                CopyKey::Max100 => "Max 100 characters",
+                CopyKey::Sending => "Sending...",
+                CopyKey::SubmitReport => "Submit report",
+                CopyKey::ReportPreview => "Report preview",
+                CopyKey::EmergencyContacts => "Emergency contacts",
+                CopyKey::ContactsSaved => "saved contacts",
+                CopyKey::NoContacts => {
+                    "No contacts yet. Add an email or WhatsApp number so SOS can send alerts."
+                }
+                CopyKey::RefreshContacts => "Refresh contacts",
+                CopyKey::AddSosContact => "Add SOS contact",
+                CopyKey::ContactName => "Contact name",
+                CopyKey::ContactEmail => "Contact email",
+                CopyKey::ContactPhone => "WhatsApp number, e.g. 08123456789",
+                CopyKey::Saving => "Saving...",
+                CopyKey::AddContact => "Add contact",
+                CopyKey::AccountPrivacy => "Account & privacy",
+                CopyKey::Anonymous => "You stay anonymous",
+                CopyKey::Protected => "Protected",
+                CopyKey::Location => "Location",
+                CopyKey::Nearby => "Nearby",
+                CopyKey::SosContacts => "SOS contacts",
+                CopyKey::SafetySettings => "Safety settings",
+                CopyKey::NearbyMap => "Nearby map",
+                CopyKey::Active => "Active",
+                CopyKey::SosAlerts => "SOS alerts",
+                CopyKey::ReadyToUse => "Ready",
+                CopyKey::LocationNotice => {
+                    "Location is unavailable. Enable location permission so map and SOS work accurately."
+                }
+                CopyKey::SosActiveTitle => "SOS is active",
+                CopyKey::SosStatusTitle => "SOS status",
+                CopyKey::SosActiveBody => "Alarm and vibration will stay active until stopped.",
+                CopyKey::SosClosedBody => "You can close this notice.",
+                CopyKey::StopAlarm => "Stop alarm",
+                CopyKey::Close => "Close",
+                CopyKey::SosStillActive => {
+                    "SOS alarm is still active. Stop it here or from the system notification."
+                }
+                CopyKey::PreparingHelp => "Preparing help for you.",
+                CopyKey::SosStopped => "SOS alarm has been stopped.",
+                CopyKey::AppPreparing => "The app is still preparing. Try again shortly.",
+                CopyKey::PreparingSosLocation => "Preparing SOS with your latest location...",
+                CopyKey::SosLocationMissing => {
+                    "Location is not available yet. Enable location permission, then try SOS again."
+                }
+                CopyKey::SosActiveSending => {
+                    "SOS alarm is active. Your location and help request are being sent to emergency contacts."
+                }
+                CopyKey::WhatsappSent => {
+                    "Help request was sent automatically via WhatsApp. Alarm stays active until stopped."
+                }
+                CopyKey::WhatsappFallback => {
+                    "Emergency contacts were processed. WhatsApp opened as fallback because auto-send is not available for this number. Alarm stays active until stopped."
+                }
+                CopyKey::SosNotified => {
+                    "Help request was sent to emergency contacts. Alarm stays active until stopped."
+                }
+                CopyKey::SosNoChannel => {
+                    "Alarm stays active, but no automatic channel succeeded. Check backend/WhatsApp API or contact someone nearby."
+                }
+                CopyKey::SosBackendFallback => {
+                    "Backend is not connected. WhatsApp opened as fallback so the message can be sent quickly. Alarm stays active until stopped."
+                }
+                CopyKey::SosStaySafe => {
+                    "Alarm stays active. Check your internet connection and contact someone nearby."
+                }
+                CopyKey::DestinationMin => "Destination needs at least 3 characters.",
+                CopyKey::RouteNeedsLocation => {
+                    "Location is unavailable. Enter manual coordinates in the Map tab first."
+                }
+                CopyKey::RouteFallbackScore => {
+                    "Route is still shown. Temporary score is calculated from nearby reports."
+                }
+                CopyKey::ReportNeedsLocation => {
+                    "Location is unavailable. Enter manual coordinates in the Map tab first."
+                }
+                CopyKey::ContactNameMin => "Contact name needs at least 2 characters.",
+                CopyKey::ContactChannelRequired => "Enter the contact email or WhatsApp number.",
+            },
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -64,21 +469,37 @@ impl ReportCategory {
         }
     }
 
-    const fn label(self) -> &'static str {
-        match self {
-            Self::Lighting => "Pencahayaan buruk",
-            Self::Crime => "Rawan kriminal",
-            Self::Accident => "Rawan kecelakaan",
-            Self::Other => "Lainnya",
+    const fn label_for(self, language: Language) -> &'static str {
+        match language {
+            Language::Indonesian => match self {
+                Self::Lighting => "Pencahayaan buruk",
+                Self::Crime => "Rawan kriminal",
+                Self::Accident => "Rawan kecelakaan",
+                Self::Other => "Lainnya",
+            },
+            Language::English => match self {
+                Self::Lighting => "Poor lighting",
+                Self::Crime => "Crime risk",
+                Self::Accident => "Accident risk",
+                Self::Other => "Other",
+            },
         }
     }
 
-    const fn short_label(self) -> &'static str {
-        match self {
-            Self::Lighting => "Gelap",
-            Self::Crime => "Kriminal",
-            Self::Accident => "Kecelakaan",
-            Self::Other => "Lainnya",
+    const fn short_label_for(self, language: Language) -> &'static str {
+        match language {
+            Language::Indonesian => match self {
+                Self::Lighting => "Gelap",
+                Self::Crime => "Kriminal",
+                Self::Accident => "Kecelakaan",
+                Self::Other => "Lainnya",
+            },
+            Language::English => match self {
+                Self::Lighting => "Dark",
+                Self::Crime => "Crime",
+                Self::Accident => "Accident",
+                Self::Other => "Other",
+            },
         }
     }
 
@@ -87,16 +508,7 @@ impl ReportCategory {
             Self::Lighting => "#f59e0b",
             Self::Crime => "#ef4444",
             Self::Accident => "#f97316",
-            Self::Other => "#64748b",
-        }
-    }
-
-    const fn soft_color(self) -> &'static str {
-        match self {
-            Self::Lighting => "#fffbeb",
-            Self::Crime => "#fff1f2",
-            Self::Accident => "#fff7ed",
-            Self::Other => "#f8fafc",
+            Self::Other => "#94a3b8",
         }
     }
 
@@ -123,6 +535,12 @@ struct LocationEval {
     error: Option<String>,
 }
 
+#[derive(Clone, Debug, Deserialize)]
+struct MapSelectionEval {
+    lat: f64,
+    lng: f64,
+}
+
 #[derive(Serialize)]
 struct MapReport {
     id: String,
@@ -140,60 +558,124 @@ const CATEGORIES: [ReportCategory; 4] = [
 ];
 
 const LOGO: Asset = asset!("/assets/jalanaman-logo.png");
+const TUTORIAL_VIDEO: Asset = asset!("/assets/video/videotutorial.mp4");
 
-const APP: &str = "min-height:100dvh;background:#eaf2ff;color:#111827;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;";
-const SCREEN: &str = "width:100%;min-height:100dvh;background:#f8fbff;position:relative;overflow:hidden;box-shadow:0 0 0 1px rgba(37,99,235,0.12);";
-const HEADER: &str = "height:80px;padding:15px 18px;display:flex;align-items:center;justify-content:space-between;background:#ffffff;border-bottom:1px solid #dbeafe;box-sizing:border-box;box-shadow:0 10px 26px rgba(30,64,175,0.08);";
-const BRAND_WRAP: &str = "display:flex;align-items:center;gap:10px;min-width:0;";
-const BRAND: &str = "font-size:20px;font-weight:900;color:#0f172a;letter-spacing:0;";
-const SUBTITLE: &str = "font-size:11px;font-weight:750;color:#2563eb;";
-const HEADER_LOGO: &str = "width:42px;height:42px;object-fit:contain;flex-shrink:0;filter:drop-shadow(0 7px 12px rgba(37,99,235,0.20));";
-const ICON_BUTTON: &str = "width:42px;height:42px;border-radius:8px;border:1px solid #cbdcfb;background:#ffffff;color:#1d4ed8;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 18px rgba(30,64,175,0.10);";
-const CONTENT: &str = "position:absolute;top:80px;left:0;right:0;bottom:92px;padding:14px;overflow-y:auto;box-sizing:border-box;";
-const MAP_CARD: &str = "height:378px;position:relative;overflow:hidden;border-radius:8px;background:#dbeafe;border:1px solid #bfdbfe;box-shadow:0 18px 38px rgba(30,64,175,0.16);";
-const ROUTE_MAP_CARD: &str = "height:286px;margin-top:12px;position:relative;overflow:hidden;border-radius:8px;background:#dbeafe;border:1px solid #bfdbfe;box-shadow:0 16px 32px rgba(30,64,175,0.14);";
+const APP: &str = "min-height:100dvh;background:radial-gradient(circle at 50% 108%,rgba(34,197,94,0.34),rgba(34,197,94,0) 34%),radial-gradient(circle at 14% 8%,rgba(37,99,235,0.22),rgba(37,99,235,0) 30%),linear-gradient(145deg,#27272a 0%,#17181c 46%,#0b0f14 100%);color:#f8fafc;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;";
+const SCREEN: &str = "width:100vw;max-width:100vw;min-height:100dvh;background:radial-gradient(circle at 50% 92%,rgba(34,197,94,0.18),rgba(34,197,94,0) 28%),radial-gradient(circle at 86% 10%,rgba(14,165,233,0.18),rgba(14,165,233,0) 34%),linear-gradient(180deg,rgba(39,40,45,0.94) 0%,rgba(23,24,29,0.95) 48%,rgba(10,14,19,0.98) 100%);position:relative;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,0.12),0 0 0 1px rgba(255,255,255,0.08);";
+const HEADER: &str = "height:88px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,rgba(58,59,66,0.72),rgba(30,32,39,0.58));border-bottom:1px solid rgba(255,255,255,0.13);box-sizing:border-box;box-shadow:0 18px 46px rgba(0,0,0,0.26),inset 0 1px 0 rgba(255,255,255,0.12);backdrop-filter:blur(26px) saturate(175%);-webkit-backdrop-filter:blur(26px) saturate(175%);";
+const BRAND_WRAP: &str = "display:flex;align-items:center;gap:12px;min-width:0;";
+const BRAND: &str = "font-size:21px;font-weight:950;color:#f8fafc;letter-spacing:0;line-height:1;text-shadow:0 1px 1px rgba(0,0,0,0.24);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+const SUBTITLE: &str = "margin-top:3px;font-size:10px;font-weight:800;color:#93c5fd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+const HEADER_LOGO: &str = "width:42px;height:42px;object-fit:contain;flex-shrink:0;filter:drop-shadow(0 12px 20px rgba(37,99,235,0.34));";
+const ICON_BUTTON: &str = "width:42px;height:42px;border-radius:14px;border:1px solid rgba(255,255,255,0.18);background:rgba(47,50,58,0.76);color:#e0f2fe;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 14px 32px rgba(0,0,0,0.24),inset 0 1px 0 rgba(255,255,255,0.20),inset 0 -1px 0 rgba(0,0,0,0.24);backdrop-filter:blur(18px) saturate(170%);-webkit-backdrop-filter:blur(18px) saturate(170%);";
+const HEADER_ACTIONS: &str = "display:flex;align-items:center;gap:6px;flex-shrink:0;";
+const LANGUAGE_TOGGLE: &str = "width:56px;height:42px;border-radius:14px;border:1px solid rgba(255,255,255,0.18);background:rgba(47,50,58,0.76);color:#e0f2fe;padding:5px;display:grid;grid-template-columns:1fr 1fr;gap:3px;align-items:center;box-shadow:0 14px 32px rgba(0,0,0,0.24),inset 0 1px 0 rgba(255,255,255,0.20),inset 0 -1px 0 rgba(0,0,0,0.24);backdrop-filter:blur(18px) saturate(170%);-webkit-backdrop-filter:blur(18px) saturate(170%);";
+const LANGUAGE_SEGMENT_ACTIVE: &str = "height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#1d4ed8;color:#ffffff;font-size:9px;font-weight:950;box-shadow:0 8px 16px rgba(37,99,235,0.22),inset 0 1px 0 rgba(255,255,255,0.22),inset 0 -1px 0 rgba(0,0,0,0.20);";
+const LANGUAGE_SEGMENT_IDLE: &str = "height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#cbd5e1;font-size:9px;font-weight:900;";
+const CONTENT: &str = "position:absolute;top:88px;left:0;right:0;bottom:130px;padding:14px 14px 18px;overflow-y:auto;box-sizing:border-box;";
+const MAP_CARD: &str = "height:clamp(326px,46dvh,368px);position:relative;overflow:hidden;border-radius:8px;background:rgba(44,46,53,0.66);border:1px solid rgba(255,255,255,0.16);box-shadow:0 24px 54px rgba(0,0,0,0.34),inset 0 1px 0 rgba(255,255,255,0.14);backdrop-filter:blur(18px) saturate(165%);-webkit-backdrop-filter:blur(18px) saturate(165%);";
+const ROUTE_MAP_CARD: &str = "height:292px;margin-top:12px;position:relative;overflow:hidden;border-radius:8px;background:rgba(44,46,53,0.66);border:1px solid rgba(255,255,255,0.16);box-shadow:0 20px 44px rgba(0,0,0,0.30),inset 0 1px 0 rgba(255,255,255,0.14);backdrop-filter:blur(18px) saturate(165%);-webkit-backdrop-filter:blur(18px) saturate(165%);";
 const MAP_IFRAME: &str =
-    "position:absolute;inset:0;width:100%;height:100%;border:0;background:#e0f2fe;";
-const MAP_LABEL: &str = "position:absolute;left:12px;top:12px;max-width:250px;padding:9px 11px;border-radius:8px;background:rgba(255,255,255,0.96);border:1px solid #cbdcfb;color:#0f172a;font-size:12px;font-weight:850;box-shadow:0 10px 24px rgba(30,64,175,0.14);z-index:2;";
-const REPORT_FAB: &str = "position:absolute;right:16px;bottom:16px;width:56px;height:56px;border-radius:12px;border:0;background:#2563eb;color:#ffffff;font-size:30px;line-height:1;font-weight:900;box-shadow:0 16px 30px rgba(37,99,235,0.34);display:flex;align-items:center;justify-content:center;z-index:2;";
-const MAP_PROVIDER: &str = "position:absolute;left:12px;bottom:14px;padding:7px 9px;border-radius:8px;background:rgba(15,47,109,0.86);color:#ffffff;font-size:10px;font-weight:800;z-index:2;";
-const CARD: &str = "margin-top:12px;background:#ffffff;border:1px solid #dbeafe;border-radius:8px;padding:14px;box-shadow:0 12px 28px rgba(30,64,175,0.09);box-sizing:border-box;";
-const CARD_TIGHT: &str = "background:#ffffff;border:1px solid #dbeafe;border-radius:8px;padding:13px;box-shadow:0 12px 28px rgba(30,64,175,0.09);box-sizing:border-box;";
+    "position:absolute;inset:0;width:100%;height:100%;border:0;background:#111827;";
+const MAP_LABEL: &str = "position:absolute;left:12px;top:12px;max-width:min(250px,calc(100% - 112px));padding:10px 12px;border-radius:8px;background:linear-gradient(180deg,rgba(45,47,55,0.78),rgba(23,25,31,0.62));border:1px solid rgba(255,255,255,0.18);color:#f8fafc;font-size:12px;font-weight:900;box-shadow:0 14px 30px rgba(0,0,0,0.26),inset 0 1px 0 rgba(255,255,255,0.16);backdrop-filter:blur(18px) saturate(170%);-webkit-backdrop-filter:blur(18px) saturate(170%);z-index:2;";
+const REPORT_FAB: &str = "position:absolute;right:16px;bottom:16px;width:60px;height:60px;border-radius:18px;border:1px solid rgba(255,255,255,0.56);background:#1d4ed8;color:#ffffff;font-size:31px;line-height:1;font-weight:950;box-shadow:0 18px 34px rgba(37,99,235,0.34),inset 0 1px 0 rgba(255,255,255,0.34),inset 0 -2px 0 rgba(0,0,0,0.22);display:flex;align-items:center;justify-content:center;z-index:2;";
+const MAP_PROVIDER: &str = "position:absolute;left:12px;bottom:14px;padding:8px 10px;border-radius:8px;background:rgba(10,38,91,0.78);border:1px solid rgba(255,255,255,0.25);color:#ffffff;font-size:10px;font-weight:850;box-shadow:0 12px 24px rgba(15,47,109,0.18);backdrop-filter:blur(14px) saturate(150%);-webkit-backdrop-filter:blur(14px) saturate(150%);z-index:2;";
+const CARD: &str = "margin-top:12px;background:linear-gradient(180deg,rgba(52,54,62,0.64),rgba(22,24,31,0.54));border:1px solid rgba(255,255,255,0.14);border-radius:8px;padding:14px;box-shadow:0 18px 42px rgba(0,0,0,0.28),inset 0 1px 0 rgba(255,255,255,0.14);box-sizing:border-box;backdrop-filter:blur(24px) saturate(175%);-webkit-backdrop-filter:blur(24px) saturate(175%);";
+const CARD_TIGHT: &str = "background:linear-gradient(180deg,rgba(52,54,62,0.66),rgba(22,24,31,0.56));border:1px solid rgba(255,255,255,0.14);border-radius:8px;padding:13px;box-shadow:0 18px 42px rgba(0,0,0,0.28),inset 0 1px 0 rgba(255,255,255,0.14);box-sizing:border-box;backdrop-filter:blur(24px) saturate(175%);-webkit-backdrop-filter:blur(24px) saturate(175%);";
 const ROW: &str = "display:flex;align-items:center;justify-content:space-between;gap:12px;";
-const EYEBROW: &str = "font-size:11px;color:#64748b;font-weight:750;margin-bottom:3px;";
-const TITLE: &str = "font-size:14px;color:#0f172a;font-weight:850;";
-const BODY: &str = "font-size:12px;color:#64748b;font-weight:650;line-height:1.45;";
+const EYEBROW: &str = "font-size:11px;color:#9ca3af;font-weight:800;margin-bottom:3px;";
+const TITLE: &str = "font-size:14px;color:#f8fafc;font-weight:900;line-height:1.25;";
+const BODY: &str = "font-size:12px;color:#cbd5e1;font-weight:700;line-height:1.48;";
 const META_GRID: &str =
     "margin-top:12px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;";
-const META_CELL: &str = "border-radius:8px;background:#eff6ff;border:1px solid #bfdbfe;padding:10px 8px;min-height:58px;box-sizing:border-box;";
-const META_VALUE: &str = "font-size:14px;font-weight:900;color:#1d4ed8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
-const META_LABEL: &str = "margin-top:2px;font-size:10px;font-weight:750;color:#64748b;";
+const META_CELL: &str = "border-radius:8px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);padding:10px 8px;min-height:58px;box-sizing:border-box;box-shadow:inset 0 1px 0 rgba(255,255,255,0.12);";
+const META_VALUE: &str = "font-size:14px;font-weight:950;color:#93c5fd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+const META_LABEL: &str = "margin-top:2px;font-size:10px;font-weight:800;color:#9ca3af;";
 const FIELD_GRID: &str = "display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;";
-const INPUT: &str = "width:100%;box-sizing:border-box;border:1px solid #cbdcfb;background:#ffffff;border-radius:8px;padding:12px 14px;color:#0f172a;font-size:14px;font-weight:650;outline:none;box-shadow:inset 0 1px 0 rgba(255,255,255,0.80);";
-const TEXTAREA: &str = "width:100%;min-height:88px;box-sizing:border-box;border:1px solid #cbdcfb;background:#ffffff;border-radius:8px;padding:12px 14px;color:#0f172a;font-size:14px;font-weight:650;outline:none;resize:none;font-family:inherit;";
-const PRIMARY_BUTTON: &str = "width:100%;margin-top:10px;border:0;border-radius:8px;background:#2563eb;color:#ffffff;padding:12px 14px;font-size:14px;font-weight:900;box-shadow:0 12px 24px rgba(37,99,235,0.28);";
-const SECONDARY_BUTTON: &str = "width:100%;margin-top:10px;border:1px solid #93c5fd;border-radius:8px;background:#eff6ff;color:#1d4ed8;padding:12px 14px;font-size:14px;font-weight:850;";
+const INPUT: &str = "width:100%;box-sizing:border-box;border:1px solid rgba(255,255,255,0.13);background:rgba(255,255,255,0.08);border-radius:8px;padding:12px 14px;color:#f8fafc;font-size:14px;font-weight:700;outline:none;box-shadow:inset 0 1px 0 rgba(255,255,255,0.12),0 8px 18px rgba(0,0,0,0.14);backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px) saturate(150%);";
+const TEXTAREA: &str = "width:100%;min-height:88px;box-sizing:border-box;border:1px solid rgba(255,255,255,0.13);background:rgba(255,255,255,0.08);border-radius:8px;padding:12px 14px;color:#f8fafc;font-size:14px;font-weight:700;outline:none;resize:none;font-family:inherit;box-shadow:inset 0 1px 0 rgba(255,255,255,0.12),0 8px 18px rgba(0,0,0,0.14);backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px) saturate(150%);";
+const PRIMARY_BUTTON: &str = "width:100%;margin-top:10px;border:1px solid rgba(255,255,255,0.38);border-radius:8px;background:#1d4ed8;color:#ffffff;padding:12px 14px;font-size:14px;font-weight:950;box-shadow:0 16px 30px rgba(37,99,235,0.24),inset 0 1px 0 rgba(255,255,255,0.28),inset 0 -1px 0 rgba(0,0,0,0.20);";
+const SECONDARY_BUTTON: &str = "width:100%;margin-top:10px;border:1px solid rgba(147,197,253,0.32);border-radius:8px;background:rgba(255,255,255,0.07);color:#bfdbfe;padding:12px 14px;font-size:14px;font-weight:900;box-shadow:inset 0 1px 0 rgba(255,255,255,0.12);backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px) saturate(150%);";
 const CATEGORY_GRID: &str = "display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;";
-const CATEGORY_BUTTON: &str = "height:54px;border:1px solid #e5e7eb;border-radius:8px;background:#ffffff;color:#334155;display:flex;align-items:center;gap:8px;padding:0 11px;font-size:12px;font-weight:850;text-align:left;";
-const CATEGORY_BUTTON_ACTIVE: &str = "height:54px;border:1px solid #38bdf8;border-radius:8px;background:#eff6ff;color:#1d4ed8;display:flex;align-items:center;gap:8px;padding:0 11px;font-size:12px;font-weight:900;text-align:left;box-shadow:0 8px 18px rgba(37,99,235,0.12);";
-const BOTTOM_BAR: &str = "position:absolute;left:0;right:0;bottom:0;height:92px;background:#0f3d91;border-top:1px solid #1d4ed8;display:grid;grid-template-columns:1fr 1fr 80px 1fr 1fr;align-items:center;padding:8px 10px 14px;box-shadow:0 -12px 28px rgba(15,47,109,0.24);box-sizing:border-box;";
-const NAV_BUTTON: &str = "height:60px;border:0;background:transparent;color:#dbeafe;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:10px;font-weight:850;";
-const NAV_BUTTON_ACTIVE: &str = "height:60px;border:0;background:#ffffff;color:#1d4ed8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:10px;font-weight:950;border-radius:8px;box-shadow:0 10px 20px rgba(15,47,109,0.26);";
-const NAV_ICON: &str = "width:21px;height:21px;display:block;stroke:currentColor;";
-const SOS_BUTTON: &str = "position:absolute;left:50%;bottom:45px;transform:translateX(-50%);width:66px;height:66px;border-radius:14px;border:5px solid #f8fbff;background:linear-gradient(135deg,#fb7185,#dc2626);color:#ffffff;font-size:14px;font-weight:950;letter-spacing:0;box-shadow:0 18px 36px rgba(220,38,38,0.38),0 0 0 9px rgba(254,226,226,0.18);display:flex;align-items:center;justify-content:center;";
-const SOS_BUTTON_ACTIVE: &str = "position:absolute;left:50%;bottom:45px;transform:translateX(-50%);width:66px;height:66px;border-radius:14px;border:5px solid #f8fbff;background:#991b1b;color:#ffffff;font-size:12px;font-weight:950;letter-spacing:0;box-shadow:0 0 0 10px rgba(239,68,68,0.18),0 18px 36px rgba(127,29,29,0.42);display:flex;align-items:center;justify-content:center;";
-const DASHBOARD_WRAP: &str = "min-height:100dvh;background:#f8fbff;padding:18px;box-sizing:border-box;color:#0f172a;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;";
-const BACK_LINK: &str = "display:inline-flex;align-items:center;gap:6px;color:#1d4ed8;text-decoration:none;font-size:13px;font-weight:850;margin-bottom:18px;";
+const CATEGORY_BUTTON: &str = "height:54px;border:1px solid rgba(255,255,255,0.12);border-radius:8px;background:rgba(255,255,255,0.07);color:#d1d5db;display:flex;align-items:center;gap:8px;padding:0 11px;font-size:12px;font-weight:850;text-align:left;box-shadow:inset 0 1px 0 rgba(255,255,255,0.12);";
+const CATEGORY_BUTTON_ACTIVE: &str = "height:54px;border:1px solid rgba(56,189,248,0.52);border-radius:8px;background:rgba(37,99,235,0.20);color:#f8fafc;display:flex;align-items:center;gap:8px;padding:0 11px;font-size:12px;font-weight:950;text-align:left;box-shadow:0 10px 22px rgba(14,165,233,0.16),inset 0 1px 0 rgba(255,255,255,0.16);";
+const BOTTOM_BAR: &str = "position:absolute;left:18px;right:18px;bottom:16px;height:76px;border-radius:38px;background:rgba(31,34,40,0.78);border:1px solid rgba(255,255,255,0.18);display:grid;grid-template-columns:1fr 1fr 72px 1fr 1fr;align-items:center;padding:7px 9px;box-shadow:0 22px 54px rgba(2,6,23,0.34),inset 0 1px 0 rgba(255,255,255,0.20),inset 0 -1px 0 rgba(0,0,0,0.30);box-sizing:border-box;backdrop-filter:blur(26px) saturate(170%);-webkit-backdrop-filter:blur(26px) saturate(170%);overflow:visible;z-index:30;";
+const NAV_BUTTON: &str = "height:60px;border:0;border-radius:30px;background:transparent;color:rgba(255,255,255,0.82);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:10px;font-weight:850;text-shadow:0 1px 1px rgba(0,0,0,0.20);";
+const NAV_BUTTON_ACTIVE: &str = "height:60px;border:1px solid rgba(255,255,255,0.20);background:rgba(255,255,255,0.13);color:#ffffff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:10px;font-weight:950;border-radius:30px;box-shadow:0 12px 26px rgba(0,0,0,0.26),inset 0 1px 0 rgba(255,255,255,0.22),inset 0 -1px 0 rgba(0,0,0,0.20);backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);";
+const NAV_ICON: &str = "width:20px;height:20px;display:block;stroke:currentColor;";
+const SOS_BUTTON: &str = "position:absolute;left:50%;bottom:40px;transform:translateX(-50%);width:64px;height:64px;border-radius:50%;border:1px solid rgba(255,255,255,0.30);background:#ef4444;color:#ffffff;font-size:19px;font-weight:900;letter-spacing:0;box-shadow:0 0 0 7px rgba(239,68,68,0.16),0 20px 34px rgba(239,68,68,0.34),0 14px 34px rgba(0,0,0,0.32),inset 0 1px 0 rgba(255,255,255,0.34),inset 0 -12px 22px rgba(127,29,29,0.30);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(20px) saturate(170%);-webkit-backdrop-filter:blur(20px) saturate(170%);z-index:31;";
+const SOS_BUTTON_ACTIVE: &str = "position:absolute;left:50%;bottom:39px;transform:translateX(-50%);width:66px;height:66px;border-radius:50%;border:1px solid rgba(255,255,255,0.30);background:#dc2626;color:#ffffff;font-size:14px;font-weight:950;letter-spacing:0;box-shadow:0 0 0 9px rgba(239,68,68,0.20),0 20px 38px rgba(220,38,38,0.44),0 14px 34px rgba(0,0,0,0.34),inset 0 1px 0 rgba(255,255,255,0.30),inset 0 -12px 22px rgba(127,29,29,0.30);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(20px) saturate(170%);-webkit-backdrop-filter:blur(20px) saturate(170%);z-index:31;";
+const DASHBOARD_WRAP: &str = "min-height:100dvh;background:radial-gradient(circle at 50% 108%,rgba(34,197,94,0.30),rgba(34,197,94,0) 36%),linear-gradient(145deg,#27272a 0%,#17181c 48%,#0b0f14 100%);padding:18px;box-sizing:border-box;color:#f8fafc;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;";
+const BACK_LINK: &str = "display:inline-flex;align-items:center;gap:6px;color:#93c5fd;text-decoration:none;font-size:13px;font-weight:850;margin-bottom:18px;";
 const DASH_TITLE: &str =
-    "font-size:24px;line-height:1.1;font-weight:900;color:#0f172a;margin:0 0 14px;";
+    "font-size:24px;line-height:1.1;font-weight:900;color:#f8fafc;margin:0 0 14px;";
 const MOTION_CSS: &str = r#"
     @keyframes ja-splash-in { from { opacity:0; transform:scale(.94); } to { opacity:1; transform:scale(1); } }
     @keyframes ja-logo-float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-7px); } }
     @keyframes ja-panel-in { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
-    @keyframes ja-sos-pulse { 0%,100% { box-shadow:0 0 0 0 rgba(239,68,68,.45); } 60% { box-shadow:0 0 0 16px rgba(239,68,68,0); } }
+    @keyframes ja-sos-pulse {
+      0%,100% { box-shadow:0 0 0 7px rgba(239,68,68,.16),0 20px 38px rgba(127,29,29,.38),0 14px 34px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.30),inset 0 -12px 22px rgba(0,0,0,.24); }
+      60% { box-shadow:0 0 0 15px rgba(239,68,68,0),0 20px 38px rgba(127,29,29,.38),0 14px 34px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.30),inset 0 -12px 22px rgba(0,0,0,.24); }
+    }
+    html, body, #main, #root, #app { width:100%; min-height:100%; margin:0; padding:0; background:#0b0f14; overflow:hidden; }
+    body > div { min-height:100dvh; margin:0; padding:0; background:#0b0f14; }
+    * { -webkit-tap-highlight-color: transparent; }
+    *, *::before, *::after { box-sizing: border-box; }
+    button, input, textarea { font-family: inherit; }
+    button { cursor: pointer; transition: transform 160ms ease, filter 160ms ease, box-shadow 160ms ease; }
+    button:active { transform: scale(.98); filter: brightness(.98); }
+    .ja-sos-orb { overflow:hidden; isolation:isolate; }
+    .ja-sos-orb:active { transform:translateX(-50%) scale(.98); }
+    .ja-sos-orb::before {
+      content:"";
+      position:absolute;
+      left:11px;
+      right:11px;
+      top:7px;
+      height:19px;
+      border-radius:999px;
+      background:rgba(255,255,255,.22);
+      opacity:.64;
+      pointer-events:none;
+      z-index:0;
+    }
+    .ja-sos-orb::after {
+      content:"";
+      position:absolute;
+      inset:1px;
+      border-radius:inherit;
+      border-top:1px solid rgba(255,255,255,.24);
+      border-bottom:1px solid rgba(0,0,0,.22);
+      pointer-events:none;
+      z-index:0;
+    }
+    .ja-sos-orb > span { position:relative; z-index:1; text-shadow:0 2px 5px rgba(0,0,0,.35); }
+    input::placeholder, textarea::placeholder { color: rgba(203,213,225,.64); }
     .ja-content { animation:ja-panel-in 320ms ease-out both; }
     .ja-splash { animation:ja-splash-in 420ms ease-out both; }
     .ja-splash-logo { animation:ja-logo-float 2.4s ease-in-out infinite; }
+    .ja-dock::before {
+      content:"";
+      position:absolute;
+      left:18%;
+      right:18%;
+      bottom:-54px;
+      height:74px;
+      border-radius:999px;
+      background:radial-gradient(circle at 50% 30%, rgba(34,197,94,.58), rgba(14,165,233,.22) 42%, rgba(14,165,233,0) 72%);
+      filter:blur(22px);
+      opacity:.74;
+      pointer-events:none;
+      z-index:-1;
+    }
+    .ja-dock::after {
+      content:"";
+      position:absolute;
+      inset:1px;
+      border-radius:inherit;
+      border-top:1px solid rgba(255,255,255,.20);
+      pointer-events:none;
+    }
     .ja-sos-active { animation:ja-sos-pulse 1.25s ease-out infinite; }
 "#;
 
@@ -201,6 +683,7 @@ const MOTION_CSS: &str = r#"
 fn Home() -> Element {
     let mut active_tab = use_signal(|| MobileTab::Map);
     let mut map_presentation = use_signal(|| MapPresentation::TwoDimensional);
+    let mut language = use_signal(|| Language::Indonesian);
     let mut show_splash = use_signal(|| true);
     let mut device_hash = use_signal(String::new);
     let mut location = use_signal(|| Option::<GeoPoint>::None);
@@ -213,6 +696,7 @@ fn Home() -> Element {
     let mut report_note = use_signal(String::new);
     let mut report_loading = use_signal(|| false);
     let mut report_error = use_signal(|| Option::<String>::None);
+    let mut report_location = use_signal(|| Option::<GeoPoint>::None);
     let mut destination = use_signal(String::new);
     let mut directions = use_signal(|| Option::<DirectionsResponse>::None);
     let mut route_score = use_signal(|| Option::<RouteScoreResponse>::None);
@@ -242,11 +726,46 @@ fn Home() -> Element {
     });
 
     use_future(move || async move {
+        loop {
+            let eval = document::eval(
+                r#"
+                return await new Promise((resolve) => {
+                    const receive = (event) => {
+                        const data = event.data;
+                        if (!data || data.type !== 'jalanaman-map-report') return;
+                        window.removeEventListener('message', receive);
+                        resolve({ lat: data.lat, lng: data.lng });
+                    };
+                    window.addEventListener('message', receive);
+                });
+                "#,
+            );
+
+            let Ok(value) = eval.await else {
+                continue;
+            };
+            let Ok(selected) = MapSelectionEval::deserialize(&value) else {
+                continue;
+            };
+            if !selected.lat.is_finite() || !selected.lng.is_finite() {
+                continue;
+            }
+
+            report_location.set(Some(GeoPoint {
+                lat: selected.lat,
+                lng: selected.lng,
+            }));
+            report_error.set(None);
+            active_tab.set(MobileTab::Report);
+        }
+    });
+
+    use_future(move || async move {
         if is_sos_alarm_active().await {
+            let current_language = *language.peek();
             sos_active.set(true);
             sos_msg.set(Some(
-                "Alarm SOS masih aktif. Hentikan lewat tombol ini atau notifikasi sistem."
-                    .to_string(),
+                current_language.text(CopyKey::SosStillActive).to_string(),
             ));
             sos_modal_open.set(true);
         }
@@ -335,6 +854,7 @@ fn Home() -> Element {
 
     let active_tab_value = *active_tab.read();
     let map_presentation_value = *map_presentation.read();
+    let language_value = *language.read();
     let location_value = *location.read();
     let report_category_value = *report_category.read();
     let report_note_value = report_note.read().clone();
@@ -346,10 +866,22 @@ fn Home() -> Element {
     let map_html = map_srcdoc(
         location_value,
         &reports_value,
+        None,
+        None,
+        map_presentation_value == MapPresentation::ThreeDimensional,
+        language_value,
+        true,
+    );
+    let route_map_html = map_srcdoc(
+        location_value,
+        &reports_value,
         directions_value.as_ref().map(|d| d.polyline.as_slice()),
         route_score_value.as_ref().map(|s| s.level.as_str()),
         map_presentation_value == MapPresentation::ThreeDimensional,
+        language_value,
+        false,
     );
+    let next_language = language_value.toggled();
 
     rsx! {
         main { style: APP,
@@ -358,15 +890,25 @@ fn Home() -> Element {
                 header { style: HEADER,
                     div { style: BRAND_WRAP,
                         img { src: LOGO, alt: "Logo JalanAman", style: HEADER_LOGO }
-                        div {
+                        div { style: "min-width:0;",
                             div { style: BRAND, "JalanAman" }
-                            div { style: SUBTITLE, "Temukan jalan yang terasa lebih aman" }
+                            div { style: SUBTITLE, "{language_value.text(CopyKey::HeaderSubtitle)}" }
                         }
                     }
-                    button {
-                        style: ICON_BUTTON,
-                        onclick: move |_| active_tab.set(MobileTab::Profile),
-                        img { src: LOGO, alt: "Akun JalanAman", style: "width:26px;height:26px;object-fit:contain;" }
+                    div { style: HEADER_ACTIONS,
+                        button {
+                            style: LANGUAGE_TOGGLE,
+                            title: "{language_value.text(CopyKey::LanguageToggleTitle)}",
+                            onclick: move |_| language.set(next_language),
+                            span { style: if language_value.is_indonesian() { LANGUAGE_SEGMENT_ACTIVE } else { LANGUAGE_SEGMENT_IDLE }, "ID" }
+                            span { style: if language_value.is_indonesian() { LANGUAGE_SEGMENT_IDLE } else { LANGUAGE_SEGMENT_ACTIVE }, "EN" }
+                        }
+                        button {
+                            style: ICON_BUTTON,
+                            title: "{language_value.text(CopyKey::HeaderHelpTitle)}",
+                            onclick: move |_| active_tab.set(MobileTab::Help),
+                            span { style: "font-size:22px;line-height:1;font-weight:950;color:#e0f2fe;text-shadow:0 1px 1px rgba(0,0,0,0.26);", "?" }
+                        }
                     }
                 }
 
@@ -379,12 +921,12 @@ fn Home() -> Element {
                             loading: *reports_loading.read() || *location_loading.read(),
                             error: reports_error.read().clone().or(location_error.read().clone()),
                             route_score: route_score_value,
+                            language: language_value,
                             manual_lat: manual_lat.read().clone(),
                             manual_lng: manual_lng.read().clone(),
                             manual_error: manual_location_error.read().clone(),
                             presentation: map_presentation_value,
                             on_presentation: move |presentation| map_presentation.set(presentation),
-                            on_report: move |_| active_tab.set(MobileTab::Report),
                             on_manual_lat: move |value| manual_lat.set(limit_text(value, 24)),
                             on_manual_lng: move |value| manual_lng.set(limit_text(value, 24)),
                             on_manual_apply: move |_| {
@@ -439,9 +981,10 @@ fn Home() -> Element {
                     } else if active_tab_value == MobileTab::Route {
                         RouteView {
                             destination: destination_value,
-                            map_html: map_html.clone(),
+                            map_html: route_map_html,
                             directions: directions_value,
                             score: route_score_value,
+                            language: language_value,
                             loading: *route_loading.read(),
                             error: route_error.read().clone(),
                             suggestions: place_suggestions.read().clone(),
@@ -510,11 +1053,11 @@ fn Home() -> Element {
                                 let selected = selected_place.read().clone();
                                 let point = *location.read();
                                 if dest.len() < 3 {
-                                    route_error.set(Some("Tujuan minimal 3 karakter.".to_string()));
+                                    route_error.set(Some(language_value.text(CopyKey::DestinationMin).to_string()));
                                     return;
                                 }
                                 let Some(origin) = point else {
-                                    route_error.set(Some("Lokasi belum tersedia. Isi koordinat manual di tab Peta dulu.".to_string()));
+                                    route_error.set(Some(language_value.text(CopyKey::RouteNeedsLocation).to_string()));
                                     return;
                                 };
 
@@ -540,7 +1083,7 @@ fn Home() -> Element {
                                                     let fallback_score = local_route_score(&dirs.polyline, &fallback_reports);
                                                     directions.set(Some(dirs));
                                                     route_score.set(Some(fallback_score));
-                                                    route_error.set(Some("Rute tetap tampil. Skor sementara dihitung dari laporan di sekitar kamu.".to_string()));
+                                                    route_error.set(Some(language_value.text(CopyKey::RouteFallbackScore).to_string()));
                                                 }
                                             }
                                         }
@@ -550,22 +1093,33 @@ fn Home() -> Element {
                             },
                         }
                     } else if active_tab_value == MobileTab::Report {
+                        {
+                            let selected_report_location =
+                                report_location.read().as_ref().copied().or(location_value);
+                            rsx! {
                         ReportView {
                             category: report_category_value,
+                            language: language_value,
                             note: report_note_value,
-                            location: location_value,
+                            location: selected_report_location,
+                            location_was_selected: report_location.read().is_some(),
                             loading: *report_loading.read(),
                             error: report_error.read().clone(),
                             on_category: move |category| report_category.set(category),
                             on_note: move |value| report_note.set(limit_text(value, 100)),
                             on_submit: move |_| {
-                                let Some(point) = *location.read() else {
-                                    report_error.set(Some("Lokasi belum tersedia. Isi koordinat manual di tab Peta dulu.".to_string()));
+                                let point = report_location
+                                    .read()
+                                    .as_ref()
+                                    .copied()
+                                    .or(*location.read());
+                                let Some(point) = point else {
+                                    report_error.set(Some(language_value.text(CopyKey::ReportNeedsLocation).to_string()));
                                     return;
                                 };
                                 let hash = device_hash.read().clone();
                                 if hash.is_empty() {
-                                    report_error.set(Some("Aplikasi sedang disiapkan. Coba lagi sebentar.".to_string()));
+                                    report_error.set(Some(language_value.text(CopyKey::AppPreparing).to_string()));
                                     return;
                                 }
 
@@ -585,6 +1139,7 @@ fn Home() -> Element {
                                         Ok(report) => {
                                             reports.write().insert(0, report);
                                             report_note.set(String::new());
+                                            report_location.set(None);
                                             active_tab.set(MobileTab::Map);
                                         }
                                         Err(err) => report_error.set(Some(err)),
@@ -593,9 +1148,12 @@ fn Home() -> Element {
                                 });
                             },
                         }
+                            }
+                        }
                     } else if active_tab_value == MobileTab::Contacts {
                         ContactsView {
                             contacts: contacts_value,
+                            language: language_value,
                             name: contact_name.read().clone(),
                             email: contact_email.read().clone(),
                             phone: contact_phone.read().clone(),
@@ -604,21 +1162,38 @@ fn Home() -> Element {
                             on_name: move |value| contact_name.set(limit_text(value, 48)),
                             on_email: move |value| contact_email.set(limit_text(value, 90)),
                             on_phone: move |value| contact_phone.set(limit_text(value, 24)),
+                            on_delete: move |contact_id: String| {
+                                let hash = device_hash.read().clone();
+                                if hash.is_empty() {
+                                    contacts_error.set(Some(language_value.text(CopyKey::AppPreparing).to_string()));
+                                    return;
+                                }
+
+                                contacts_loading.set(true);
+                                contacts_error.set(None);
+                                spawn(async move {
+                                    match delete_contact(&hash, &contact_id).await {
+                                        Ok(()) => contacts.write().retain(|contact| contact.id != contact_id),
+                                        Err(err) => contacts_error.set(Some(err)),
+                                    }
+                                    contacts_loading.set(false);
+                                });
+                            },
                             on_add: move |_| {
                                 let hash = device_hash.read().clone();
                                 let name = contact_name.read().trim().to_string();
                                 let email_text = contact_email.read().trim().to_string();
                                 let phone_text = contact_phone.read().trim().to_string();
                                 if hash.is_empty() {
-                                    contacts_error.set(Some("Aplikasi sedang disiapkan. Coba lagi sebentar.".to_string()));
+                                    contacts_error.set(Some(language_value.text(CopyKey::AppPreparing).to_string()));
                                     return;
                                 }
                                 if name.len() < 2 {
-                                    contacts_error.set(Some("Nama kontak minimal 2 karakter.".to_string()));
+                                    contacts_error.set(Some(language_value.text(CopyKey::ContactNameMin).to_string()));
                                     return;
                                 }
                                 if email_text.is_empty() && phone_text.is_empty() {
-                                    contacts_error.set(Some("Isi email atau nomor WhatsApp kontak.".to_string()));
+                                    contacts_error.set(Some(language_value.text(CopyKey::ContactChannelRequired).to_string()));
                                     return;
                                 }
 
@@ -646,7 +1221,7 @@ fn Home() -> Element {
                             on_refresh: move |_| {
                                 let hash = device_hash.read().clone();
                                 if hash.is_empty() {
-                                    contacts_error.set(Some("Aplikasi sedang disiapkan. Coba lagi sebentar.".to_string()));
+                                    contacts_error.set(Some(language_value.text(CopyKey::AppPreparing).to_string()));
                                     return;
                                 }
                                 contacts_loading.set(true);
@@ -662,66 +1237,70 @@ fn Home() -> Element {
                                 });
                             },
                         }
-                    } else {
+                    } else if active_tab_value == MobileTab::Profile {
                         ProfileView {
                             location: location_value,
+                            language: language_value,
                             report_count: reports.read().len(),
                             contact_count: contacts.read().len(),
                             location_error: location_error.read().clone(),
                         }
+                    } else {
+                        HelpView { language: language_value }
                     }
                 }
 
                 if *sos_modal_open.read() {
                     SosOverlay {
                         active: *sos_active.read(),
-                        message: sos_msg.read().clone().unwrap_or_else(|| "Kami sedang menyiapkan bantuan untukmu.".to_string()),
+                        language: language_value,
+                        message: sos_msg.read().clone().unwrap_or_else(|| language_value.text(CopyKey::PreparingHelp).to_string()),
                         on_close: move |_| sos_modal_open.set(false),
                         on_stop: move |_| {
                             stop_sos_alarm();
                             sos_active.set(false);
-                            sos_msg.set(Some("Alarm SOS sudah dihentikan.".to_string()));
+                            sos_msg.set(Some(language_value.text(CopyKey::SosStopped).to_string()));
                             sos_modal_open.set(true);
                         },
                     }
                 }
 
-                nav { style: BOTTOM_BAR,
+                nav { style: BOTTOM_BAR, class: "ja-dock",
                     NavButton {
                         active: active_tab_value == MobileTab::Map,
                         icon: NavIconKind::Map,
-                        label: "Peta",
+                        label: language_value.text(CopyKey::MapNav),
                         onclick: move |_| active_tab.set(MobileTab::Map),
                     }
                     NavButton {
                         active: active_tab_value == MobileTab::Route,
                         icon: NavIconKind::Route,
-                        label: "Rute",
+                        label: language_value.text(CopyKey::RouteNav),
                         onclick: move |_| active_tab.set(MobileTab::Route),
                     }
                     div {}
                     NavButton {
                         active: active_tab_value == MobileTab::Contacts,
                         icon: NavIconKind::Contacts,
-                        label: "Kontak",
+                        label: language_value.text(CopyKey::ContactsNav),
                         onclick: move |_| active_tab.set(MobileTab::Contacts),
                     }
                     NavButton {
                         active: active_tab_value == MobileTab::Profile,
                         icon: NavIconKind::Profile,
-                        label: "Akun",
+                        label: language_value.text(CopyKey::AccountNav),
                         onclick: move |_| active_tab.set(MobileTab::Profile),
                     }
                 }
 
                 button {
                     style: if *sos_active.read() { SOS_BUTTON_ACTIVE } else { SOS_BUTTON },
-                    class: if *sos_active.read() { "ja-sos-active" } else { "" },
+                    class: if *sos_active.read() { "ja-sos-orb ja-sos-active" } else { "ja-sos-orb" },
                     onclick: move |_| {
                         if *sos_active.read() {
                             stop_sos_alarm();
                             sos_active.set(false);
-                            sos_msg.set(Some("Alarm SOS sudah dihentikan.".to_string()));
+                            sos_msg.set(Some(language_value.text(CopyKey::SosStopped).to_string()));
                             sos_modal_open.set(true);
                             return;
                         }
@@ -729,13 +1308,13 @@ fn Home() -> Element {
                         let point = *location.read();
                         let hash = device_hash.read().clone();
                         if hash.is_empty() {
-                            sos_msg.set(Some("Tunggu sebentar, perlindungan SOS sedang disiapkan.".to_string()));
+                            sos_msg.set(Some(language_value.text(CopyKey::AppPreparing).to_string()));
                             sos_modal_open.set(true);
                             return;
                         }
                         let whatsapp_contacts = contacts.read().clone();
 
-                        sos_msg.set(Some("Menyiapkan SOS dengan lokasi terkini...".to_string()));
+                        sos_msg.set(Some(language_value.text(CopyKey::PreparingSosLocation).to_string()));
                         sos_modal_open.set(true);
                         spawn(async move {
                             let point = match point {
@@ -750,7 +1329,7 @@ fn Home() -> Element {
                                     }
                                     Err(err) => {
                                         location_error.set(Some(err.clone()));
-                                        sos_msg.set(Some("Lokasi belum didapatkan. Aktifkan izin lokasi, lalu coba SOS lagi.".to_string()));
+                                        sos_msg.set(Some(language_value.text(CopyKey::SosLocationMissing).to_string()));
                                         return;
                                     }
                                 },
@@ -762,24 +1341,42 @@ fn Home() -> Element {
                             return;
                         }
                         sos_active.set(true);
-                        sos_msg.set(Some("Alarm SOS aktif. Lokasi dan permintaan bantuan sedang dikirim ke kontak darurat.".to_string()));
-
-                            let whatsapp_opened = open_whatsapp_sos(&whatsapp_contacts, point)
-                                .await
-                                .unwrap_or(false);
+                        sos_msg.set(Some(language_value.text(CopyKey::SosActiveSending).to_string()));
 
                             match trigger_sos(&hash, point).await {
-                                Ok(_) if whatsapp_opened => sos_msg.set(Some("Permintaan bantuan dikirim. WhatsApp sudah dibuka agar pesan dapat segera dikirim. Alarm tetap aktif sampai dihentikan.".to_string())),
-                                Ok(_) => sos_msg.set(Some("Permintaan bantuan dikirim ke kontak darurat. Alarm tetap aktif sampai dihentikan.".to_string())),
-                                Err(_) => sos_msg.set(Some("Alarm tetap aktif. Pastikan koneksi internet lalu hubungi orang terdekat di sekitarmu.".to_string())),
+                                Ok(response) => {
+                                    let whatsapp_opened = open_whatsapp_sos(&whatsapp_contacts, point)
+                                        .await
+                                        .unwrap_or(false);
+
+                                    if whatsapp_opened {
+                                        sos_msg.set(Some(language_value.text(CopyKey::WhatsappFallback).to_string()));
+                                    } else if response.notified_count > 0 {
+                                        sos_msg.set(Some(language_value.text(CopyKey::SosNotified).to_string()));
+                                    } else {
+                                        sos_msg.set(Some(language_value.text(CopyKey::SosNoChannel).to_string()));
+                                    }
+                                }
+                                Err(_) => {
+                                    let whatsapp_opened = open_whatsapp_sos(&whatsapp_contacts, point)
+                                        .await
+                                        .unwrap_or(false);
+                                    if whatsapp_opened {
+                                        sos_msg.set(Some(language_value.text(CopyKey::SosBackendFallback).to_string()));
+                                    } else {
+                                        sos_msg.set(Some(language_value.text(CopyKey::SosStaySafe).to_string()));
+                                    }
+                                }
                             }
                         });
                     },
-                    if *sos_active.read() { "STOP" } else { "SOS" }
+                    span {
+                        if *sos_active.read() { "STOP" } else { "SOS" }
+                    }
                 }
 
                 if *show_splash.read() {
-                    LaunchSplash {}
+                    LaunchSplash { language: language_value }
                 }
             }
         }
@@ -787,16 +1384,16 @@ fn Home() -> Element {
 }
 
 #[component]
-fn LaunchSplash() -> Element {
+fn LaunchSplash(language: Language) -> Element {
     rsx! {
-        div { style: "position:absolute;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:28px;background:linear-gradient(160deg,#eff6ff 0%,#ffffff 55%,#dbeafe 100%);box-sizing:border-box;",
+        div { style: "position:absolute;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:28px;background:radial-gradient(circle at 50% 78%,rgba(34,197,94,0.26),rgba(34,197,94,0) 34%),linear-gradient(145deg,#27272a 0%,#17181c 52%,#0b0f14 100%);box-sizing:border-box;",
             div { class: "ja-splash", style: "width:100%;max-width:330px;text-align:center;",
-                div { style: "width:142px;height:142px;margin:0 auto 24px;display:flex;align-items:center;justify-content:center;border-radius:32px;background:#ffffff;border:1px solid #bfdbfe;box-shadow:0 24px 54px rgba(37,99,235,0.20);",
+                div { style: "width:142px;height:142px;margin:0 auto 24px;display:flex;align-items:center;justify-content:center;border-radius:34px;background:linear-gradient(180deg,rgba(255,255,255,0.14),rgba(255,255,255,0.06));border:1px solid rgba(255,255,255,0.17);box-shadow:0 28px 64px rgba(0,0,0,0.34),inset 0 1px 0 rgba(255,255,255,0.18);backdrop-filter:blur(24px) saturate(175%);-webkit-backdrop-filter:blur(24px) saturate(175%);",
                     img { class: "ja-splash-logo", src: LOGO, alt: "Logo JalanAman", style: "width:116px;height:116px;object-fit:contain;" }
                 }
-                div { style: "font-size:29px;font-weight:950;color:#0f172a;letter-spacing:0;", "JalanAman" }
-                div { style: "max-width:250px;margin:8px auto 0;color:#475569;font-size:14px;font-weight:700;line-height:1.45;", "Melangkah dengan rasa aman." }
-                div { style: "width:46px;height:4px;margin:28px auto 0;border-radius:99px;background:#2563eb;" }
+                div { style: "font-size:29px;font-weight:950;color:#f8fafc;letter-spacing:0;", "JalanAman" }
+                div { style: "max-width:250px;margin:8px auto 0;color:#cbd5e1;font-size:14px;font-weight:750;line-height:1.45;", "{language.text(CopyKey::SplashSubtitle)}" }
+                div { style: "width:54px;height:5px;margin:28px auto 0;border-radius:99px;background:linear-gradient(90deg,#2563eb,#0ea5e9,#14b8a6);box-shadow:0 10px 22px rgba(37,99,235,0.22);" }
             }
         }
     }
@@ -805,39 +1402,51 @@ fn LaunchSplash() -> Element {
 #[component]
 fn SosOverlay(
     active: bool,
+    language: Language,
     message: String,
     on_close: EventHandler<MouseEvent>,
     on_stop: EventHandler<MouseEvent>,
 ) -> Element {
+    let status_title = if active {
+        language.text(CopyKey::SosActiveTitle)
+    } else {
+        language.text(CopyKey::SosStatusTitle)
+    };
+    let status_body = if active {
+        language.text(CopyKey::SosActiveBody)
+    } else {
+        language.text(CopyKey::SosClosedBody)
+    };
+
     rsx! {
-        div { style: "position:absolute;inset:0;z-index:45;display:flex;align-items:flex-end;padding:18px 16px 110px;background:rgba(15,23,42,0.48);box-sizing:border-box;",
-            div { class: "ja-splash", style: "width:100%;background:#ffffff;border:1px solid #fecaca;border-radius:8px;box-shadow:0 24px 54px rgba(15,23,42,0.28);overflow:hidden;",
-                div { style: "height:6px;background:#dc2626;" }
+        div { style: "position:absolute;inset:0;z-index:45;display:flex;align-items:flex-end;padding:18px 16px 116px;background:rgba(2,6,23,0.56);box-sizing:border-box;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);",
+            div { class: "ja-splash", style: "width:100%;background:linear-gradient(180deg,rgba(52,54,62,0.86),rgba(16,18,24,0.78));border:1px solid rgba(255,255,255,0.14);border-radius:8px;box-shadow:0 28px 64px rgba(0,0,0,0.42),inset 0 1px 0 rgba(255,255,255,0.16);overflow:hidden;backdrop-filter:blur(24px) saturate(175%);-webkit-backdrop-filter:blur(24px) saturate(175%);",
+                div { style: "height:6px;background:linear-gradient(90deg,#fb7185,#ef4444,#be123c);" }
                 div { style: "padding:18px;",
                     div { style: "display:flex;align-items:flex-start;gap:12px;",
-                        div { style: "width:42px;height:42px;border-radius:12px;background:#fff1f2;color:#dc2626;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:950;flex-shrink:0;", "!" }
+                        div { style: "width:44px;height:44px;border-radius:14px;background:rgba(127,29,29,0.30);color:#fecdd3;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:950;flex-shrink:0;box-shadow:inset 0 1px 0 rgba(255,255,255,0.14),0 10px 22px rgba(225,29,72,0.16);", "!" }
                         div { style: "min-width:0;flex:1;",
-                            div { style: "font-size:17px;color:#0f172a;font-weight:950;", if active { "SOS sedang aktif" } else { "Status SOS" } }
-                            div { style: "margin-top:2px;font-size:11px;color:#b91c1c;font-weight:850;", if active { "Alarm dan getaran akan terus aktif sampai dihentikan." } else { "Kamu dapat menutup pemberitahuan ini." } }
+                            div { style: "font-size:17px;color:#f8fafc;font-weight:950;", "{status_title}" }
+                            div { style: "margin-top:2px;font-size:11px;color:#fda4af;font-weight:850;", "{status_body}" }
                         }
                         button {
-                            style: "width:34px;height:34px;border:0;border-radius:8px;background:#f8fafc;color:#475569;font-size:21px;line-height:1;display:flex;align-items:center;justify-content:center;",
+                            style: "width:36px;height:36px;border:1px solid rgba(255,255,255,0.14);border-radius:10px;background:rgba(255,255,255,0.08);color:#cbd5e1;font-size:21px;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 0 rgba(255,255,255,0.12);",
                             onclick: move |event| on_close.call(event),
                             "×"
                         }
                     }
-                    div { style: "margin:16px 0 0;color:#334155;font-size:13px;font-weight:700;line-height:1.55;", "{message}" }
+                    div { style: "margin:16px 0 0;color:#cbd5e1;font-size:13px;font-weight:700;line-height:1.55;", "{message}" }
                     if active {
                         button {
-                            style: "width:100%;margin-top:18px;border:0;border-radius:8px;background:#dc2626;color:#ffffff;padding:13px 14px;font-size:14px;font-weight:950;box-shadow:0 12px 24px rgba(220,38,38,0.25);",
+                            style: "width:100%;margin-top:18px;border:1px solid rgba(255,255,255,0.38);border-radius:8px;background:#b91c1c;color:#ffffff;padding:13px 14px;font-size:14px;font-weight:950;box-shadow:0 14px 28px rgba(220,38,38,0.24),inset 0 1px 0 rgba(255,255,255,0.28),inset 0 -1px 0 rgba(0,0,0,0.22);",
                             onclick: move |event| on_stop.call(event),
-                            "Hentikan alarm"
+                            "{language.text(CopyKey::StopAlarm)}"
                         }
                     } else {
                         button {
-                            style: "width:100%;margin-top:18px;border:1px solid #bfdbfe;border-radius:8px;background:#eff6ff;color:#1d4ed8;padding:13px 14px;font-size:14px;font-weight:900;",
+                            style: "width:100%;margin-top:18px;border:1px solid rgba(147,197,253,0.30);border-radius:8px;background:rgba(255,255,255,0.07);color:#bfdbfe;padding:13px 14px;font-size:14px;font-weight:900;box-shadow:inset 0 1px 0 rgba(255,255,255,0.12);",
                             onclick: move |event| on_close.call(event),
-                            "Tutup"
+                            "{language.text(CopyKey::Close)}"
                         }
                     }
                 }
@@ -854,25 +1463,34 @@ fn MapView(
     loading: bool,
     error: Option<String>,
     route_score: Option<RouteScoreResponse>,
+    language: Language,
     manual_lat: String,
     manual_lng: String,
     manual_error: Option<String>,
     presentation: MapPresentation,
     on_presentation: EventHandler<MapPresentation>,
-    on_report: EventHandler<MouseEvent>,
     on_manual_lat: EventHandler<String>,
     on_manual_lng: EventHandler<String>,
     on_manual_apply: EventHandler<MouseEvent>,
     on_refresh: EventHandler<MouseEvent>,
 ) -> Element {
     let title = if loading {
-        "Memuat peta dan laporan".to_string()
+        language.text(CopyKey::MapLoading).to_string()
     } else {
-        format!("{} laporan aktif radius 800 m", reports.len())
+        format!(
+            "{} {}",
+            reports.len(),
+            language.text(CopyKey::ReportsActiveRadius)
+        )
     };
     let gps_label = location
         .map(|p| format!("{:.5}, {:.5}", p.lat, p.lng))
-        .unwrap_or_else(|| "GPS belum tersedia".to_string());
+        .unwrap_or_else(|| language.text(CopyKey::GpsUnavailable).to_string());
+    let live_badge = if loading {
+        language.text(CopyKey::Loading).to_string()
+    } else {
+        language.text(CopyKey::Live).to_string()
+    };
 
     rsx! {
         div {
@@ -883,26 +1501,19 @@ fn MapView(
                 }
                 div { style: MAP_LABEL,
                     div { "{title}" }
-                    div { style: "margin-top:2px;font-size:10px;color:#64748b;font-weight:750;", "{gps_label}" }
+                    div { style: "margin-top:3px;font-size:10px;color:#cbd5e1;font-weight:800;", "{gps_label}" }
                 }
-                div { style: MAP_PROVIDER, "Peta langsung" }
-                div { style: "position:absolute;right:12px;top:12px;z-index:3;display:flex;gap:5px;padding:4px;border:1px solid rgba(147,197,253,0.82);border-radius:8px;background:rgba(255,255,255,0.94);box-shadow:0 8px 18px rgba(30,64,175,0.14);",
+                div { style: "position:absolute;right:12px;top:12px;z-index:3;display:flex;gap:5px;padding:4px;border:1px solid rgba(255,255,255,0.18);border-radius:8px;background:rgba(38,41,48,0.78);box-shadow:0 12px 28px rgba(0,0,0,0.26),inset 0 1px 0 rgba(255,255,255,0.16),inset 0 -1px 0 rgba(0,0,0,0.24);backdrop-filter:blur(18px) saturate(170%);-webkit-backdrop-filter:blur(18px) saturate(170%);",
                     button {
-                        style: if presentation == MapPresentation::TwoDimensional { "height:29px;min-width:38px;border:0;border-radius:6px;background:#1d4ed8;color:#ffffff;font-size:10px;font-weight:950;" } else { "height:29px;min-width:38px;border:0;border-radius:6px;background:transparent;color:#475569;font-size:10px;font-weight:850;" },
+                        style: if presentation == MapPresentation::TwoDimensional { "height:31px;min-width:40px;border:0;border-radius:7px;background:#1d4ed8;color:#ffffff;font-size:10px;font-weight:950;box-shadow:0 8px 16px rgba(37,99,235,0.24),inset 0 1px 0 rgba(255,255,255,0.24),inset 0 -1px 0 rgba(0,0,0,0.20);" } else { "height:31px;min-width:40px;border:0;border-radius:7px;background:transparent;color:#cbd5e1;font-size:10px;font-weight:900;" },
                         onclick: move |_| on_presentation.call(MapPresentation::TwoDimensional),
                         "2D"
                     }
                     button {
-                        style: if presentation == MapPresentation::ThreeDimensional { "height:29px;min-width:38px;border:0;border-radius:6px;background:#1d4ed8;color:#ffffff;font-size:10px;font-weight:950;" } else { "height:29px;min-width:38px;border:0;border-radius:6px;background:transparent;color:#475569;font-size:10px;font-weight:850;" },
+                        style: if presentation == MapPresentation::ThreeDimensional { "height:31px;min-width:40px;border:0;border-radius:7px;background:#1d4ed8;color:#ffffff;font-size:10px;font-weight:950;box-shadow:0 8px 16px rgba(37,99,235,0.24),inset 0 1px 0 rgba(255,255,255,0.24),inset 0 -1px 0 rgba(0,0,0,0.20);" } else { "height:31px;min-width:40px;border:0;border-radius:7px;background:transparent;color:#cbd5e1;font-size:10px;font-weight:900;" },
                         onclick: move |_| on_presentation.call(MapPresentation::ThreeDimensional),
                         "3D"
                     }
-                }
-                button {
-                    style: REPORT_FAB,
-                    title: "Lapor cepat",
-                    onclick: move |event| on_report.call(event),
-                    "+"
                 }
             }
 
@@ -914,13 +1525,13 @@ fn MapView(
                 div { style: CARD,
                     div { style: ROW,
                         div {
-                            div { style: EYEBROW, "Lokasi manual" }
-                            div { style: TITLE, "Pakai koordinat HP" }
+                            div { style: EYEBROW, "{language.text(CopyKey::ManualLocation)}" }
+                            div { style: TITLE, "{language.text(CopyKey::UsePhoneCoordinates)}" }
                         }
-                        Badge { label: "Fallback".to_string(), bg: "#fef3c7", color: "#92400e" }
+                        Badge { label: language.text(CopyKey::Fallback).to_string(), bg: "#fef3c7", color: "#92400e" }
                     }
                     div { style: "margin-top:8px;",
-                        div { style: BODY, "Lokasi belum tersedia. Aktifkan izin lokasi atau masukkan koordinat untuk melanjutkan." }
+                        div { style: BODY, "{language.text(CopyKey::ManualLocationBody)}" }
                     }
                     div { style: FIELD_GRID,
                         input {
@@ -942,7 +1553,7 @@ fn MapView(
                     button {
                         style: PRIMARY_BUTTON,
                         onclick: move |event| on_manual_apply.call(event),
-                        "Pakai lokasi ini"
+                        "{language.text(CopyKey::UseThisLocation)}"
                     }
                 }
             }
@@ -950,24 +1561,24 @@ fn MapView(
             div { style: CARD,
                 div { style: ROW,
                     div {
-                        div { style: EYEBROW, "Laporan terdekat" }
+                        div { style: EYEBROW, "{language.text(CopyKey::NearbyReports)}" }
                         div { style: TITLE, "{title}" }
                     }
-                    Badge { label: if loading { "Loading".to_string() } else { "Live".to_string() }, bg: "#dbeafe", color: "#1e40af" }
+                    Badge { label: live_badge, bg: "rgba(37,99,235,0.24)", color: "#bfdbfe" }
                 }
                 div { style: "display:flex;flex-direction:column;gap:8px;margin-top:12px;",
                     if reports.is_empty() {
-                        div { style: BODY, "Belum ada laporan aktif dari user lain di radius ini." }
+                        div { style: BODY, "{language.text(CopyKey::NoNearbyReports)}" }
                     } else {
                         for report in reports.iter().take(4) {
-                            ReportRow { report: report.clone(), location }
+                            ReportRow { report: report.clone(), location, language }
                         }
                     }
                 }
                 button {
                     style: SECONDARY_BUTTON,
                     onclick: move |event| on_refresh.call(event),
-                    "Refresh GPS & laporan"
+                    "{language.text(CopyKey::RefreshGpsReports)}"
                 }
             }
 
@@ -975,8 +1586,8 @@ fn MapView(
                 div { style: CARD,
                     div { style: ROW,
                         div {
-                            div { style: EYEBROW, "Overlay rute terakhir" }
-                            div { style: TITLE, "{score.level} dengan {score.report_count} laporan di rute" }
+                            div { style: EYEBROW, "{language.text(CopyKey::LastRouteOverlay)}" }
+                            div { style: TITLE, "{route_overlay_title(&score, language)}" }
                         }
                         Badge { label: score.level.clone(), bg: level_bg(&score.level), color: level_color(&score.level) }
                     }
@@ -992,6 +1603,7 @@ fn RouteView(
     map_html: String,
     directions: Option<DirectionsResponse>,
     score: Option<RouteScoreResponse>,
+    language: Language,
     loading: bool,
     error: Option<String>,
     suggestions: Vec<PlaceSuggestion>,
@@ -1003,40 +1615,45 @@ fn RouteView(
     on_search: EventHandler<MouseEvent>,
 ) -> Element {
     let has_directions = directions.is_some();
+    let search_button_label = if loading {
+        language.text(CopyKey::CheckingRoute)
+    } else {
+        language.text(CopyKey::CheckSafeRoute)
+    };
 
     rsx! {
         div {
             div { style: CARD_TIGHT,
-                div { style: EYEBROW, "Cari tujuan" }
+                div { style: EYEBROW, "{language.text(CopyKey::SearchDestination)}" }
                 input {
                     style: INPUT,
                     value: "{destination}",
-                    placeholder: "Cari tempat atau alamat",
+                    placeholder: "{language.text(CopyKey::SearchDestinationPlaceholder)}",
                     oninput: move |event| on_destination.call(event.value()),
                 }
                 if let Some(place) = selected_place {
-                    div { style: "margin-top:9px;display:flex;align-items:center;gap:10px;padding:10px 11px;border:1px solid #93c5fd;border-radius:8px;background:#eff6ff;",
-                        span { style: "width:24px;height:24px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:50%;background:#1d4ed8;color:#ffffff;font-size:13px;font-weight:900;", "✓" }
+                    div { style: "margin-top:9px;display:flex;align-items:center;gap:10px;padding:10px 11px;border:1px solid rgba(147,197,253,0.30);border-radius:8px;background:rgba(37,99,235,0.14);box-shadow:inset 0 1px 0 rgba(255,255,255,0.12);",
+                        span { style: "width:26px;height:26px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:50%;background:#1d4ed8;color:#ffffff;font-size:13px;font-weight:900;box-shadow:0 8px 16px rgba(37,99,235,0.20),inset 0 1px 0 rgba(255,255,255,0.22);", "✓" }
                         div { style: "min-width:0;",
-                            div { style: "font-size:12px;color:#0f172a;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;", "{place.name}" }
-                            div { style: "margin-top:2px;font-size:10px;color:#64748b;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;", "{place.subtitle}" }
+                            div { style: "font-size:12px;color:#f8fafc;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;", "{place.name}" }
+                            div { style: "margin-top:2px;font-size:10px;color:#cbd5e1;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;", "{place.subtitle}" }
                         }
                     }
                 } else if suggestions_loading {
-                    div { style: "margin-top:10px;padding:10px 2px;color:#1d4ed8;font-size:12px;font-weight:800;", "Mencari tempat..." }
+                    div { style: "margin-top:10px;padding:10px 2px;color:#93c5fd;font-size:12px;font-weight:850;", "{language.text(CopyKey::SearchingPlaces)}" }
                 } else if !suggestions.is_empty() {
-                    div { style: "margin-top:9px;overflow:hidden;border:1px solid rgba(37,99,235,0.20);border-radius:8px;background:#ffffff;",
+                    div { style: "margin-top:9px;overflow:hidden;border:1px solid rgba(255,255,255,0.13);border-radius:8px;background:rgba(255,255,255,0.07);box-shadow:inset 0 1px 0 rgba(255,255,255,0.12);backdrop-filter:blur(14px) saturate(150%);-webkit-backdrop-filter:blur(14px) saturate(150%);",
                         for place in suggestions {
                             {
                                 let place_for_click = place.clone();
                                 rsx! {
                                     button {
-                                        style: "width:100%;min-height:58px;padding:10px 11px;border:0;border-bottom:1px solid #e2e8f0;background:#ffffff;color:#0f172a;display:flex;align-items:center;gap:10px;text-align:left;",
+                                        style: "width:100%;min-height:58px;padding:10px 11px;border:0;border-bottom:1px solid rgba(255,255,255,0.10);background:transparent;color:#f8fafc;display:flex;align-items:center;gap:10px;text-align:left;",
                                         onclick: move |_| on_select_place.call(place_for_click.clone()),
-                                        span { style: "width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#f8fbff;color:#1d4ed8;font-size:14px;font-weight:900;", "●" }
+                                        span { style: "width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:rgba(255,255,255,0.09);color:#93c5fd;font-size:14px;font-weight:900;box-shadow:inset 0 1px 0 rgba(255,255,255,0.12);", "●" }
                                         div { style: "min-width:0;flex:1;",
                                             div { style: "font-size:12px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;", "{place.name}" }
-                                            div { style: "margin-top:2px;color:#64748b;font-size:10px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;", "{place.subtitle}" }
+                                            div { style: "margin-top:2px;color:#cbd5e1;font-size:10px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;", "{place.subtitle}" }
                                         }
                                     }
                                 }
@@ -1044,13 +1661,13 @@ fn RouteView(
                         }
                     }
                 } else if let Some(search_error) = suggestions_error {
-                    div { style: "margin-top:10px;color:#b45309;font-size:11px;font-weight:800;line-height:1.4;", "{search_error}" }
+                    div { style: "margin-top:10px;color:#fbbf24;font-size:11px;font-weight:800;line-height:1.4;", "{search_error}" }
                 }
                 button {
                     style: PRIMARY_BUTTON,
                     disabled: loading,
                     onclick: move |event| on_search.call(event),
-                    if loading { "Mengecek rute..." } else { "Cek rute aman" }
+                    "{search_button_label}"
                 }
             }
 
@@ -1063,43 +1680,43 @@ fn RouteView(
                     iframe {
                         style: MAP_IFRAME,
                         srcdoc: "{map_html}",
-                        title: "Peta rute aman",
+                        title: "{language.text(CopyKey::SafeRouteMapTitle)}",
                     }
-                    div { style: MAP_PROVIDER, "Rute langsung" }
+                    div { style: MAP_PROVIDER, "{language.text(CopyKey::LiveRoute)}" }
                 }
             }
 
             div { style: CARD,
                 div { style: ROW,
                     div {
-                        div { style: EYEBROW, "Skor rute" }
-                        div { style: TITLE, "Status keamanan rute" }
+                        div { style: EYEBROW, "{language.text(CopyKey::RouteScore)}" }
+                        div { style: TITLE, "{language.text(CopyKey::RouteSafetyStatus)}" }
                     }
                     if let Some(score) = score.clone() {
-                        Badge { label: score.level.clone(), bg: level_bg(&score.level), color: level_color(&score.level) }
+                        Badge { label: localized_level(&score.level, language).to_string(), bg: level_bg(&score.level), color: level_color(&score.level) }
                     } else {
-                        Badge { label: "Belum dicek".to_string(), bg: "#eff6ff", color: "#1d4ed8" }
+                        Badge { label: language.text(CopyKey::NotChecked).to_string(), bg: "rgba(37,99,235,0.18)", color: "#bfdbfe" }
                     }
                 }
 
                 if let Some(score) = score {
                     div { style: META_GRID,
-                        Metric { value: format!("{:.1}", score.score), label: "Bobot" }
-                        Metric { value: score.level.clone(), label: "Status" }
-                        Metric { value: score.report_count.to_string(), label: "Laporan" }
+                        Metric { value: format!("{:.1}", score.score), label: language.text(CopyKey::Weight) }
+                        Metric { value: localized_level(&score.level, language).to_string(), label: language.text(CopyKey::Status) }
+                        Metric { value: score.report_count.to_string(), label: language.text(CopyKey::Reports) }
                     }
                 } else {
-                    div { style: "margin-top:12px;", div { style: BODY, "Masukkan tujuan untuk melihat skor keamanan rute." } }
+                    div { style: "margin-top:12px;", div { style: BODY, "{language.text(CopyKey::EnterDestinationHint)}" } }
                 }
             }
 
             if let Some(dirs) = directions {
                 div { style: CARD,
-                    div { style: EYEBROW, "Detail rute" }
+                    div { style: EYEBROW, "{language.text(CopyKey::RouteDetails)}" }
                     div { style: META_GRID,
-                        Metric { value: distance_label(dirs.distance_m), label: "Jarak" }
-                        Metric { value: duration_label(dirs.duration_s), label: "Estimasi" }
-                        Metric { value: "Jalan kaki".to_string(), label: "Mode" }
+                        Metric { value: distance_label(dirs.distance_m), label: language.text(CopyKey::Distance) }
+                        Metric { value: duration_label(dirs.duration_s, language), label: language.text(CopyKey::Estimate) }
+                        Metric { value: language.text(CopyKey::Walking).to_string(), label: language.text(CopyKey::Mode) }
                     }
                 }
             }
@@ -1110,8 +1727,10 @@ fn RouteView(
 #[component]
 fn ReportView(
     category: ReportCategory,
+    language: Language,
     note: String,
     location: Option<GeoPoint>,
+    location_was_selected: bool,
     loading: bool,
     error: Option<String>,
     on_category: EventHandler<ReportCategory>,
@@ -1120,22 +1739,26 @@ fn ReportView(
 ) -> Element {
     let note_count = note.chars().count().to_string();
     let gps_status = if location.is_some() {
-        "GPS siap"
+        language.text(CopyKey::GpsReady)
     } else {
-        "GPS belum siap"
+        language.text(CopyKey::GpsNotReady)
     };
     let category_color = category.color();
-    let category_soft_color = category.soft_color();
-    let category_label = category.label();
+    let category_label = category.label_for(language);
     let gps_badge_bg = if location.is_some() {
-        "#dbeafe"
+        "rgba(37,99,235,0.24)"
     } else {
-        "#fee2e2"
+        "rgba(127,29,29,0.30)"
     };
     let gps_badge_color = if location.is_some() {
-        "#1e40af"
+        "#bfdbfe"
     } else {
-        "#991b1b"
+        "#fecdd3"
+    };
+    let submit_label = if loading {
+        language.text(CopyKey::Sending)
+    } else {
+        language.text(CopyKey::SubmitReport)
     };
 
     rsx! {
@@ -1143,16 +1766,32 @@ fn ReportView(
             div { style: CARD,
                 div { style: ROW,
                     div {
-                        div { style: EYEBROW, "Lapor cepat" }
-                        div { style: TITLE, "Kategori laporan" }
+                        div { style: EYEBROW, "{language.text(CopyKey::QuickReport)}" }
+                        div { style: TITLE, "{language.text(CopyKey::ReportCategory)}" }
                     }
                     Badge { label: gps_status.to_string(), bg: gps_badge_bg, color: gps_badge_color }
+                }
+
+                if let Some(point) = location {
+                    div { style: "margin-top:12px;padding:10px 11px;border:1px solid rgba(147,197,253,0.30);border-radius:8px;background:rgba(37,99,235,0.14);",
+                        div { style: EYEBROW,
+                            if location_was_selected {
+                                if language.is_indonesian() { "Titik laporan yang dipilih" } else { "Selected report point" }
+                            } else {
+                                if language.is_indonesian() { "Lokasi GPS saat ini" } else { "Current GPS location" }
+                            }
+                        }
+                        div { style: "font-size:13px;font-weight:950;color:#bfdbfe;",
+                            "{point.lat:.6}, {point.lng:.6}"
+                        }
+                    }
                 }
 
                 div { style: CATEGORY_GRID,
                     for item in CATEGORIES {
                         CategoryButton {
                             category: item,
+                            language,
                             selected: category == item,
                             onclick: move |_| on_category.call(item),
                         }
@@ -1160,15 +1799,15 @@ fn ReportView(
                 }
 
                 div { style: "margin-top:12px;",
-                    div { style: EYEBROW, "Catatan opsional" }
+                    div { style: EYEBROW, "{language.text(CopyKey::OptionalNote)}" }
                     textarea {
                         style: TEXTAREA,
                         value: "{note}",
                         maxlength: "100",
-                        placeholder: "Maks 100 karakter",
+                        placeholder: "{language.text(CopyKey::Max100)}",
                         oninput: move |event| on_note.call(event.value()),
                     }
-                    div { style: "margin-top:6px;text-align:right;font-size:10px;font-weight:750;color:#64748b;",
+                    div { style: "margin-top:6px;text-align:right;font-size:10px;font-weight:750;color:#9ca3af;",
                         "{note_count}/100"
                     }
                 }
@@ -1181,17 +1820,17 @@ fn ReportView(
                     style: PRIMARY_BUTTON,
                     disabled: loading,
                     onclick: move |event| on_submit.call(event),
-                    if loading { "Mengirim..." } else { "Kirim laporan" }
+                    "{submit_label}"
                 }
             }
 
             div { style: CARD,
-                div { style: EYEBROW, "Preview laporan" }
-                div { style: "display:flex;align-items:center;gap:10px;border:1px solid #e2e8f0;background:{category_soft_color};border-radius:8px;padding:10px 11px;",
-                    span { style: "width:11px;height:11px;border-radius:50%;background:{category_color};box-shadow:0 0 0 4px rgba(255,255,255,0.78);flex-shrink:0;" }
+                div { style: EYEBROW, "{language.text(CopyKey::ReportPreview)}" }
+                div { style: "display:flex;align-items:center;gap:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.07);border-radius:8px;padding:10px 11px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.12);",
+                    span { style: "width:11px;height:11px;border-radius:50%;background:{category_color};box-shadow:0 0 0 4px rgba(255,255,255,0.12),0 0 18px {category_color};flex-shrink:0;" }
                     div { style: "min-width:0;flex:1;",
-                        div { style: "font-size:12px;font-weight:900;color:#0f172a;", "{category_label}" }
-                        div { style: "margin-top:2px;font-size:10px;font-weight:750;color:#64748b;", "{gps_status}" }
+                        div { style: "font-size:12px;font-weight:900;color:#f8fafc;", "{category_label}" }
+                        div { style: "margin-top:2px;font-size:10px;font-weight:800;color:#cbd5e1;", "{gps_status}" }
                     }
                 }
             }
@@ -1202,6 +1841,7 @@ fn ReportView(
 #[component]
 fn ContactsView(
     contacts: Vec<EmergencyContact>,
+    language: Language,
     name: String,
     email: String,
     phone: String,
@@ -1210,28 +1850,43 @@ fn ContactsView(
     on_name: EventHandler<String>,
     on_email: EventHandler<String>,
     on_phone: EventHandler<String>,
+    on_delete: EventHandler<String>,
     on_add: EventHandler<MouseEvent>,
     on_refresh: EventHandler<MouseEvent>,
 ) -> Element {
     let count = contacts.len().to_string();
+    let refresh_label = if loading {
+        language.text(CopyKey::Loading)
+    } else {
+        language.text(CopyKey::RefreshContacts)
+    };
+    let add_label = if loading {
+        language.text(CopyKey::Saving)
+    } else {
+        language.text(CopyKey::AddContact)
+    };
 
     rsx! {
         div {
             div { style: CARD,
                 div { style: ROW,
                     div {
-                        div { style: EYEBROW, "Kontak darurat" }
-                        div { style: TITLE, "{count} kontak tersimpan" }
+                        div { style: EYEBROW, "{language.text(CopyKey::EmergencyContacts)}" }
+                        div { style: TITLE, "{count} {language.text(CopyKey::ContactsSaved)}" }
                     }
                     Badge { label: "Email/WA/SOS".to_string(), bg: "#fee2e2", color: "#991b1b" }
                 }
 
                 div { style: "display:flex;flex-direction:column;gap:9px;margin-top:12px;",
                     if contacts.is_empty() {
-                        div { style: BODY, "Belum ada kontak. Tambahkan email atau nomor WhatsApp agar SOS bisa mengirim alert." }
+                        div { style: BODY, "{language.text(CopyKey::NoContacts)}" }
                     } else {
                         for contact in contacts {
-                            ContactRow { contact }
+                            ContactRow {
+                                contact,
+                                language,
+                                on_delete: move |contact_id| on_delete.call(contact_id),
+                            }
                         }
                     }
                 }
@@ -1242,30 +1897,30 @@ fn ContactsView(
                 button {
                     style: SECONDARY_BUTTON,
                     onclick: move |event| on_refresh.call(event),
-                    if loading { "Memuat..." } else { "Refresh kontak" }
+                    "{refresh_label}"
                 }
             }
 
             div { style: CARD,
-                div { style: EYEBROW, "Tambah kontak SOS" }
+                div { style: EYEBROW, "{language.text(CopyKey::AddSosContact)}" }
                 input {
                     style: INPUT,
                     value: "{name}",
-                    placeholder: "Nama kontak",
+                    placeholder: "{language.text(CopyKey::ContactName)}",
                     oninput: move |event| on_name.call(event.value()),
                 }
                 div { style: "height:8px;" }
                 input {
                     style: INPUT,
                     value: "{email}",
-                    placeholder: "Email kontak",
+                    placeholder: "{language.text(CopyKey::ContactEmail)}",
                     oninput: move |event| on_email.call(event.value()),
                 }
                 div { style: "height:8px;" }
                 input {
                     style: INPUT,
                     value: "{phone}",
-                    placeholder: "Nomor WhatsApp, contoh 08123456789",
+                    placeholder: "{language.text(CopyKey::ContactPhone)}",
                     inputmode: "tel",
                     oninput: move |event| on_phone.call(event.value()),
                 }
@@ -1273,7 +1928,7 @@ fn ContactsView(
                     style: PRIMARY_BUTTON,
                     disabled: loading,
                     onclick: move |event| on_add.call(event),
-                    if loading { "Menyimpan..." } else { "Tambah kontak" }
+                    "{add_label}"
                 }
             }
         }
@@ -1283,14 +1938,15 @@ fn ContactsView(
 #[component]
 fn ProfileView(
     location: Option<GeoPoint>,
+    language: Language,
     report_count: usize,
     contact_count: usize,
     location_error: Option<String>,
 ) -> Element {
     let location_status = if location.is_some() {
-        "Lokasi aktif".to_string()
+        language.text(CopyKey::Active).to_string()
     } else {
-        "Menunggu izin lokasi".to_string()
+        language.text(CopyKey::GpsNotReady).to_string()
     };
 
     rsx! {
@@ -1298,24 +1954,59 @@ fn ProfileView(
             div { style: CARD,
                 div { style: ROW,
                     div {
-                        div { style: EYEBROW, "Akun & privasi" }
-                        div { style: TITLE, "Kamu tetap anonim" }
+                        div { style: EYEBROW, "{language.text(CopyKey::AccountPrivacy)}" }
+                        div { style: TITLE, "{language.text(CopyKey::Anonymous)}" }
                     }
-                    Badge { label: "Terlindungi".to_string(), bg: "#dbeafe", color: "#1e40af" }
+                    Badge { label: language.text(CopyKey::Protected).to_string(), bg: "rgba(37,99,235,0.24)", color: "#bfdbfe" }
                 }
                 div { style: META_GRID,
-                    Metric { value: location_status, label: "Lokasi" }
-                    Metric { value: report_count.to_string(), label: "Di sekitar" }
-                    Metric { value: contact_count.to_string(), label: "Kontak SOS" }
+                    Metric { value: location_status, label: language.text(CopyKey::Location) }
+                    Metric { value: report_count.to_string(), label: language.text(CopyKey::Nearby) }
+                    Metric { value: contact_count.to_string(), label: language.text(CopyKey::SosContacts) }
                 }
             }
 
             div { style: CARD,
-                div { style: EYEBROW, "Pengaturan keamanan" }
-                StatusRow { label: "Peta sekitar", value: "Aktif".to_string() }
-                StatusRow { label: "Peringatan SOS", value: "Siap digunakan".to_string() }
+                div { style: EYEBROW, "{language.text(CopyKey::SafetySettings)}" }
+                StatusRow { label: language.text(CopyKey::NearbyMap), value: language.text(CopyKey::Active).to_string() }
+                StatusRow { label: language.text(CopyKey::SosAlerts), value: language.text(CopyKey::ReadyToUse).to_string() }
                 if location_error.is_some() {
-                    Notice { message: "Lokasi belum tersedia. Aktifkan izin lokasi agar peta dan SOS bekerja akurat.".to_string(), danger: true }
+                    Notice { message: language.text(CopyKey::LocationNotice).to_string(), danger: true }
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn HelpView(language: Language) -> Element {
+    rsx! {
+        div {
+            div { style: CARD,
+                div { style: EYEBROW, "{language.text(CopyKey::HeaderHelpTitle)}" }
+                div { style: TITLE, "{language.text(CopyKey::HelpTitle)}" }
+                div { style: "margin-top:8px;", div { style: BODY, "{language.text(CopyKey::HelpSubtitle)}" } }
+            }
+
+            div { style: CARD,
+                div { style: ROW,
+                    div {
+                        div { style: EYEBROW, "{language.text(CopyKey::TutorialVideo)}" }
+                        div { style: TITLE, "JalanAman" }
+                    }
+                    Badge { label: "MP4".to_string(), bg: "rgba(37,99,235,0.24)", color: "#bfdbfe" }
+                }
+                div { style: "margin-top:12px;overflow:hidden;border-radius:8px;border:1px solid rgba(255,255,255,0.14);background:#05070b;box-shadow:0 18px 36px rgba(0,0,0,0.28),inset 0 1px 0 rgba(255,255,255,0.10);",
+                    video {
+                        style: "width:100%;max-height:55dvh;display:block;background:#05070b;object-fit:contain;",
+                        controls: true,
+                        preload: "metadata",
+                        source {
+                            src: TUTORIAL_VIDEO,
+                            r#type: "video/mp4",
+                        }
+                        "{language.text(CopyKey::VideoUnavailable)}"
+                    }
                 }
             }
         }
@@ -1349,6 +2040,7 @@ fn Fallback(segments: Vec<String>) -> Element {
 #[component]
 fn CategoryButton(
     category: ReportCategory,
+    language: Language,
     selected: bool,
     onclick: EventHandler<MouseEvent>,
 ) -> Element {
@@ -1361,51 +2053,77 @@ fn CategoryButton(
             span {
                 style: "width:11px;height:11px;border-radius:50%;background:{color};display:inline-block;flex-shrink:0;",
             }
-            span { "{category.short_label()}" }
+            span { "{category.short_label_for(language)}" }
         }
     }
 }
 
 #[component]
-fn ReportRow(report: Report, location: Option<GeoPoint>) -> Element {
+fn ReportRow(report: Report, location: Option<GeoPoint>, language: Language) -> Element {
     let category = ReportCategory::from_api(&report.category);
     let category_color = category.color();
-    let category_soft_color = category.soft_color();
-    let category_label = category.short_label();
+    let category_label = category.short_label_for(language);
     let distance = location
         .map(|point| distance_label(haversine_m(point.lat, point.lng, report.lat, report.lng)))
-        .unwrap_or_else(|| "jarak belum ada".to_string());
+        .unwrap_or_else(|| {
+            if language.is_indonesian() {
+                "jarak belum ada".to_string()
+            } else {
+                "distance unavailable".to_string()
+            }
+        });
     let note = report
         .note
         .clone()
-        .unwrap_or_else(|| category.label().to_string());
+        .unwrap_or_else(|| category.label_for(language).to_string());
 
     rsx! {
         div {
-            style: "display:flex;align-items:center;gap:10px;border:1px solid #e2e8f0;background:{category_soft_color};border-radius:8px;padding:10px 11px;",
+            style: "display:flex;align-items:center;gap:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.07);border-radius:8px;padding:10px 11px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.12);",
             span {
-                style: "width:11px;height:11px;border-radius:50%;background:{category_color};box-shadow:0 0 0 4px rgba(255,255,255,0.78);flex-shrink:0;",
+                style: "width:11px;height:11px;border-radius:50%;background:{category_color};box-shadow:0 0 0 4px rgba(255,255,255,0.12),0 0 18px {category_color};flex-shrink:0;",
             }
             div { style: "min-width:0;flex:1;",
-                div { style: "font-size:12px;font-weight:900;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;", "{note}" }
-                div { style: "margin-top:2px;font-size:10px;font-weight:750;color:#64748b;", "{category_label} | {distance}" }
+                div { style: "font-size:12px;font-weight:900;color:#f8fafc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;", "{note}" }
+                div { style: "margin-top:2px;font-size:10px;font-weight:800;color:#cbd5e1;", "{category_label} | {distance}" }
             }
         }
     }
 }
 
 #[component]
-fn ContactRow(contact: EmergencyContact) -> Element {
+fn ContactRow(
+    contact: EmergencyContact,
+    language: Language,
+    on_delete: EventHandler<String>,
+) -> Element {
+    let contact_id = contact.id.clone();
     let status = if contact.push_endpoint.is_some() {
-        "Push siap"
+        if language.is_indonesian() {
+            "Push siap"
+        } else {
+            "Push ready"
+        }
     } else if contact.email.is_some() && contact.phone.is_some() {
         "Email + WA"
     } else if contact.email.is_some() {
-        "Email siap"
+        if language.is_indonesian() {
+            "Email siap"
+        } else {
+            "Email ready"
+        }
     } else if contact.phone.is_some() {
-        "WA siap"
+        if language.is_indonesian() {
+            "WA siap"
+        } else {
+            "WA ready"
+        }
     } else {
-        "Menunggu"
+        if language.is_indonesian() {
+            "Menunggu"
+        } else {
+            "Pending"
+        }
     };
     let mut details = Vec::new();
     if let Some(email) = contact.email.clone().filter(|value| !value.is_empty()) {
@@ -1420,28 +2138,37 @@ fn ContactRow(contact: EmergencyContact) -> Element {
         }
     }
     let detail = if details.is_empty() {
-        "Belum tersambung".to_string()
+        if language.is_indonesian() {
+            "Belum tersambung".to_string()
+        } else {
+            "Not connected".to_string()
+        }
     } else {
         details.join(" | ")
     };
-    let status_bg = if status == "Menunggu" {
-        "#fef3c7"
+    let waiting = status == "Menunggu" || status == "Pending";
+    let status_bg = if waiting {
+        "rgba(146,64,14,0.28)"
     } else {
-        "#dbeafe"
+        "rgba(37,99,235,0.24)"
     };
-    let status_color = if status == "Menunggu" {
-        "#92400e"
-    } else {
-        "#1e40af"
-    };
+    let status_color = if waiting { "#fde68a" } else { "#bfdbfe" };
 
     rsx! {
-        div { style: "display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;",
+        div { style: "display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px;border:1px solid rgba(255,255,255,0.12);border-radius:8px;background:rgba(255,255,255,0.07);box-shadow:inset 0 1px 0 rgba(255,255,255,0.12);",
             div { style: "min-width:0;",
                 div { style: TITLE, "{contact.name}" }
-                div { style: "font-size:11px;color:#64748b;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;", "{detail}" }
+                div { style: "font-size:11px;color:#cbd5e1;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;", "{detail}" }
             }
-            Badge { label: status.to_string(), bg: status_bg, color: status_color }
+            div { style: "display:flex;align-items:center;gap:7px;flex-shrink:0;",
+                Badge { label: status.to_string(), bg: status_bg, color: status_color }
+                button {
+                    style: "width:34px;height:34px;border-radius:10px;border:1px solid rgba(254,202,202,0.24);background:rgba(127,29,29,0.28);color:#fecdd3;font-size:17px;font-weight:950;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 0 rgba(255,255,255,0.10);",
+                    title: if language.is_indonesian() { "Hapus kontak" } else { "Delete contact" },
+                    onclick: move |_| on_delete.call(contact_id.clone()),
+                    "×"
+                }
+            }
         }
     }
 }
@@ -1460,7 +2187,7 @@ fn Metric(value: String, label: &'static str) -> Element {
 fn Badge(label: String, bg: &'static str, color: &'static str) -> Element {
     rsx! {
         span {
-            style: "flex-shrink:0;border-radius:999px;background:{bg};color:{color};padding:7px 11px;font-size:11px;font-weight:900;white-space:nowrap;",
+            style: "flex-shrink:0;border-radius:999px;background:{bg};color:{color};padding:7px 11px;font-size:11px;font-weight:950;white-space:nowrap;border:1px solid rgba(255,255,255,0.18);box-shadow:inset 0 1px 0 rgba(255,255,255,0.16),0 8px 16px rgba(0,0,0,0.12);",
             "{label}"
         }
     }
@@ -1469,9 +2196,9 @@ fn Badge(label: String, bg: &'static str, color: &'static str) -> Element {
 #[component]
 fn Notice(message: String, danger: bool) -> Element {
     let style = if danger {
-        "margin-top:10px;border-radius:8px;border:1px solid #fecaca;background:#fff1f2;color:#991b1b;padding:10px 11px;font-size:12px;font-weight:800;line-height:1.4;"
+        "margin-top:10px;border-radius:8px;border:1px solid rgba(254,202,202,0.22);background:rgba(127,29,29,0.24);color:#fecdd3;padding:10px 11px;font-size:12px;font-weight:850;line-height:1.4;box-shadow:inset 0 1px 0 rgba(255,255,255,0.10);backdrop-filter:blur(14px) saturate(145%);-webkit-backdrop-filter:blur(14px) saturate(145%);"
     } else {
-        "margin-top:10px;border-radius:8px;border:1px solid #93c5fd;background:#eff6ff;color:#1d4ed8;padding:10px 11px;font-size:12px;font-weight:800;line-height:1.4;"
+        "margin-top:10px;border-radius:8px;border:1px solid rgba(147,197,253,0.26);background:rgba(37,99,235,0.16);color:#bfdbfe;padding:10px 11px;font-size:12px;font-weight:850;line-height:1.4;box-shadow:inset 0 1px 0 rgba(255,255,255,0.10);backdrop-filter:blur(14px) saturate(145%);-webkit-backdrop-filter:blur(14px) saturate(145%);"
     };
 
     rsx! { div { style: "{style}", "{message}" } }
@@ -1480,9 +2207,9 @@ fn Notice(message: String, danger: bool) -> Element {
 #[component]
 fn StatusRow(label: &'static str, value: String) -> Element {
     rsx! {
-        div { style: "display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #eef2ff;",
-            span { style: "font-size:12px;font-weight:800;color:#334155;", "{label}" }
-            span { style: "font-size:12px;font-weight:900;color:#1d4ed8;text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;", "{value}" }
+        div { style: "display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.10);",
+            span { style: "font-size:12px;font-weight:850;color:#cbd5e1;", "{label}" }
+            span { style: "font-size:12px;font-weight:950;color:#93c5fd;text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;", "{value}" }
         }
     }
 }
@@ -1654,7 +2381,8 @@ fn normalize_location_error(message: String) -> String {
         || lower.contains("ditolak")
         || lower.contains("izin")
     {
-        return "Izin lokasi belum aktif. Izinkan lokasi untuk JalanAman, lalu coba lagi.".to_string();
+        return "Izin lokasi belum aktif. Izinkan lokasi untuk JalanAman, lalu coba lagi."
+            .to_string();
     }
 
     if lower.contains("gps")
@@ -1887,6 +2615,17 @@ async fn add_contact(
     .await
 }
 
+async fn delete_contact(device_hash: &str, contact_id: &str) -> Result<(), String> {
+    let client = reqwest::Client::new();
+    let _: serde_json::Value = request_json(
+        client
+            .delete(api_url(&format!("/sos/contacts/{contact_id}")))
+            .query(&[("device_hash", device_hash.to_string())]),
+    )
+    .await?;
+    Ok(())
+}
+
 async fn trigger_sos(device_hash: &str, point: GeoPoint) -> Result<SosTriggerResponse, String> {
     let client = reqwest::Client::new();
     request_json(
@@ -1906,10 +2645,9 @@ async fn request_json<T>(request: reqwest::RequestBuilder) -> Result<T, String>
 where
     T: serde::de::DeserializeOwned,
 {
-    let response = request
-        .send()
-        .await
-        .map_err(|_| "Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.".to_string())?;
+    let response = request.send().await.map_err(|_| {
+        "Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.".to_string()
+    })?;
     let status = response.status();
 
     if status.is_success() {
@@ -1938,6 +2676,8 @@ fn map_srcdoc(
     route: Option<&[Waypoint]>,
     route_level: Option<&str>,
     three_dimensional: bool,
+    language: Language,
+    selectable: bool,
 ) -> String {
     let location_json = serde_json::to_string(&location).unwrap_or_else(|_| "null".to_string());
     let reports_json = serde_json::to_string(
@@ -1958,6 +2698,57 @@ fn map_srcdoc(
     let route_level_json = serde_json::to_string(&route_level.unwrap_or("Aman"))
         .unwrap_or_else(|_| "\"Aman\"".to_string());
     let three_dimensional_json = if three_dimensional { "true" } else { "false" };
+    let selectable_json = if selectable { "true" } else { "false" };
+    let loading_title = if language.is_indonesian() {
+        "Memuat peta"
+    } else {
+        "Loading map"
+    };
+    let loading_body = if language.is_indonesian() {
+        "Menyiapkan jalan dan laporan di sekitarmu."
+    } else {
+        "Preparing roads and reports around you."
+    };
+    let map_failed_title = if language.is_indonesian() {
+        "Peta belum termuat"
+    } else {
+        "Map did not load"
+    };
+    let map_failed_body = if language.is_indonesian() {
+        "Cek koneksi internet lalu coba refresh peta."
+    } else {
+        "Check your internet connection, then refresh the map."
+    };
+    let three_d_failed_title = if language.is_indonesian() {
+        "Tampilan 3D belum termuat"
+    } else {
+        "3D view did not load"
+    };
+    let three_d_failed_body = if language.is_indonesian() {
+        "Periksa koneksi internet atau kembali ke tampilan 2D."
+    } else {
+        "Check your internet connection or switch back to 2D."
+    };
+    let mark_hint = if language.is_indonesian() {
+        "Seret ikon orang ke lokasi tidak aman"
+    } else {
+        "Drag the person icon to an unsafe location"
+    };
+    let mark_confirm = if language.is_indonesian() {
+        "Laporkan lokasi ini?"
+    } else {
+        "Report this location?"
+    };
+    let mark_cancel = if language.is_indonesian() {
+        "Batal"
+    } else {
+        "Cancel"
+    };
+    let mark_accept = if language.is_indonesian() {
+        "Ya, buat laporan"
+    } else {
+        "Yes, create report"
+    };
 
     r#"<!doctype html>
 <html>
@@ -1966,7 +2757,7 @@ fn map_srcdoc(
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" />
   <style>
-    html, body, #map { margin:0; width:100%; height:100%; overflow:hidden; background:#dbeafe; }
+    html, body, #map { margin:0; width:100%; height:100%; overflow:hidden; background:linear-gradient(145deg,#27272a,#10141a); }
     #map { position:relative; touch-action:none; cursor:grab; font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
     #map.dragging { cursor:grabbing; }
     #viewport { position:absolute; inset:0; }
@@ -1974,19 +2765,37 @@ fn map_srcdoc(
     #tiles img { position:absolute; width:256px; height:256px; image-rendering:auto; user-select:none; -webkit-user-drag:none; pointer-events:none; }
     #overlay { pointer-events:none; z-index:3; }
     #points { z-index:4; pointer-events:none; }
-    #fallback { position:absolute; inset:0; z-index:6; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:24px; box-sizing:border-box; background:#e0f2fe; color:#0f172a; font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; text-align:center; }
+    #fallback { position:absolute; inset:0; z-index:6; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:24px; box-sizing:border-box; background:linear-gradient(145deg,rgba(39,40,45,.92),rgba(13,18,24,.86)); color:#f8fafc; font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; text-align:center; backdrop-filter:blur(14px) saturate(150%); -webkit-backdrop-filter:blur(14px) saturate(150%); }
     #fallback strong { font-size:14px; font-weight:900; }
-    #fallback span { max-width:220px; font-size:11px; font-weight:700; line-height:1.4; color:#475569; }
+    #fallback span { max-width:220px; font-size:11px; font-weight:700; line-height:1.4; color:#cbd5e1; }
     .pin { position:absolute; width:24px; height:24px; margin:-12px 0 0 -12px; border-radius:50%; border:3px solid #fff; box-shadow:0 10px 18px rgba(15,23,42,.25); display:flex; align-items:center; justify-content:center; color:#fff; font:900 11px system-ui; }
     .me { position:absolute; width:18px; height:18px; margin:-9px 0 0 -9px; border-radius:50%; background:#1d4ed8; border:3px solid #fff; box-shadow:0 0 0 14px rgba(37,99,235,.17),0 10px 22px rgba(15,23,42,.26); }
     .route-end { position:absolute; width:28px; height:28px; margin:-28px 0 0 -14px; border-radius:9px 9px 9px 2px; transform:rotate(-45deg); background:#1d4ed8; border:3px solid #fff; box-shadow:0 12px 22px rgba(15,23,42,.25); display:flex; align-items:center; justify-content:center; }
     .route-end span { transform:rotate(45deg); color:#fff; font:900 12px system-ui; }
-    #zoomctl { position:absolute; right:10px; top:50%; transform:translateY(-50%); z-index:5; display:flex; flex-direction:column; border-radius:10px; overflow:hidden; box-shadow:0 10px 20px rgba(15,23,42,.22); }
-    #zoomctl button { display:block; width:34px; height:34px; border:0; background:rgba(255,255,255,0.96); color:#1d4ed8; font:900 18px/34px system-ui; padding:0; }
-    #zoomctl button:first-child { border-bottom:1px solid #dbeafe; }
+    #zoomctl { position:absolute; right:10px; top:50%; transform:translateY(-50%); z-index:5; display:flex; flex-direction:column; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,.18); box-shadow:0 12px 24px rgba(15,23,42,.24),inset 0 1px 0 rgba(255,255,255,.16); backdrop-filter:blur(18px) saturate(170%); -webkit-backdrop-filter:blur(18px) saturate(170%); }
+    #zoomctl button { display:block; width:36px; height:36px; border:0; background:rgba(24,27,34,0.72); color:#bfdbfe; font:950 19px/36px system-ui; padding:0; }
+    #zoomctl button:first-child { border-bottom:1px solid rgba(255,255,255,.12); }
+    #markhint { position:absolute; left:50%; bottom:12px; transform:translateX(-50%); z-index:5; white-space:nowrap; border:1px solid rgba(255,255,255,.20); border-radius:999px; background:rgba(24,27,34,.80); color:#fff; padding:8px 12px; font:850 10px system-ui; box-shadow:0 10px 22px rgba(0,0,0,.24); pointer-events:none; }
+    @keyframes person-pulse { 0%,100% { transform:scale(1); opacity:.52; } 50% { transform:scale(1.45); opacity:.18; } }
+    #reportperson { position:absolute; right:12px; top:76px; z-index:9; width:42px; height:48px; border:1px solid rgba(255,255,255,.72); border-radius:12px; background:rgba(255,255,255,.96); color:#f59e0b; display:flex; align-items:center; justify-content:center; font:950 27px/1 system-ui; box-shadow:0 12px 28px rgba(0,0,0,.28); touch-action:none; user-select:none; -webkit-user-select:none; cursor:grab; transition:transform 150ms ease,box-shadow 150ms ease; will-change:left,top,transform; }
+    #reportperson::before { content:""; position:absolute; left:9px; right:9px; bottom:-8px; height:8px; border-radius:50%; background:rgba(15,23,42,.38); filter:blur(3px); transition:all 150ms ease; z-index:-1; }
+    #reportperson.dragging { cursor:grabbing; transform:translateY(-12px) scale(1.16); box-shadow:0 22px 38px rgba(0,0,0,.38); }
+    #reportperson.dragging::before { left:3px; right:3px; bottom:-19px; opacity:.62; animation:person-pulse .9s ease-in-out infinite; }
+    #dragcoords { position:absolute; left:50%; top:-27px; transform:translateX(-50%); display:none; white-space:nowrap; padding:5px 8px; border-radius:7px; background:rgba(15,23,42,.92); border:1px solid rgba(255,255,255,.18); color:#fff; font:850 9px/1 system-ui; box-shadow:0 8px 18px rgba(0,0,0,.28); pointer-events:none; }
+    #reportperson.dragging #dragcoords { display:block; }
+    #selectedline { position:absolute; inset:0; z-index:4; pointer-events:none; }
+    #confirmmark { position:absolute; left:50%; bottom:14px; transform:translateX(-50%); width:calc(100% - 28px); max-width:340px; z-index:12; display:none; padding:12px; border:1px solid rgba(255,255,255,.20); border-radius:12px; background:rgba(24,27,34,.96); color:#fff; box-shadow:0 18px 38px rgba(0,0,0,.42); font-family:system-ui; }
+    #confirmmark strong { display:block; font-size:12px; }
+    #confirmmark span { display:block; margin-top:3px; color:#cbd5e1; font-size:10px; }
+    #confirmmark .actions { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-top:10px; }
+    #confirmmark button { height:35px; border-radius:8px; border:1px solid rgba(255,255,255,.18); font:900 11px system-ui; }
+    #cancelmark { background:rgba(255,255,255,.08); color:#cbd5e1; }
+    #acceptmark { background:#1d4ed8; color:#fff; }
     #map.is-3d #viewport, #map.is-3d #zoomctl { display:none; }
     .ja-me-3d { width:20px; height:20px; border-radius:50%; background:#1d4ed8; border:3px solid #fff; box-shadow:0 0 0 14px rgba(37,99,235,.17),0 10px 22px rgba(15,23,42,.26); box-sizing:border-box; }
-    .maplibregl-ctrl-group { border-radius:8px; overflow:hidden; box-shadow:0 10px 20px rgba(15,23,42,.22); }
+    #map.is-3d .maplibregl-ctrl-top-right { top:82px; right:10px; }
+    #map.is-3d .maplibregl-ctrl-top-right .maplibregl-ctrl { margin:0; }
+    .maplibregl-ctrl-group { border-radius:8px; overflow:hidden; border:1px solid rgba(255,255,255,.22); box-shadow:0 12px 24px rgba(15,23,42,.24); backdrop-filter:blur(18px) saturate(170%); -webkit-backdrop-filter:blur(18px) saturate(170%); }
   </style>
 </head>
 <body>
@@ -2000,7 +2809,18 @@ fn map_srcdoc(
     <button id="zoomIn" type="button">+</button>
     <button id="zoomOut" type="button">&minus;</button>
   </div>
-  <div id="fallback"><strong>Memuat peta</strong><span>Menyiapkan jalan dan laporan di sekitarmu.</span></div>
+  <svg id="selectedline"></svg>
+  <div id="reportperson" aria-label="Tandai lokasi tidak aman">🚶<span id="dragcoords"></span></div>
+  <div id="markhint">__MARK_HINT__</div>
+  <div id="confirmmark">
+    <strong>__MARK_CONFIRM__</strong>
+    <span id="confirmcoords"></span>
+    <div class="actions">
+      <button id="cancelmark" type="button">__MARK_CANCEL__</button>
+      <button id="acceptmark" type="button">__MARK_ACCEPT__</button>
+    </div>
+  </div>
+  <div id="fallback"><strong>__LOADING_TITLE__</strong><span>__LOADING_BODY__</span></div>
 </div>
 <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
 <script>
@@ -2009,21 +2829,34 @@ const reports = __REPORTS__;
 const route = __ROUTE__;
 const routeLevel = __ROUTE_LEVEL__;
 const threeDimensional = __THREE_DIMENSIONAL__;
+const selectable = __SELECTABLE__;
 const mapEl = document.getElementById('map');
 const viewportEl = document.getElementById('viewport');
 const tilesEl = document.getElementById('tiles');
 const pointsEl = document.getElementById('points');
 const overlay = document.getElementById('overlay');
 const fallback = document.getElementById('fallback');
+const markHint = document.getElementById('markhint');
+const reportPerson = document.getElementById('reportperson');
+const dragCoords = document.getElementById('dragcoords');
+const selectedLine = document.getElementById('selectedline');
+const confirmMark = document.getElementById('confirmmark');
+const confirmCoords = document.getElementById('confirmcoords');
+if (!selectable) {
+  markHint.style.display = 'none';
+  reportPerson.style.display = 'none';
+}
 const MIN_ZOOM = 3;
 const MAX_ZOOM = 18;
 let activeCenter = null;
 let activeZoom = null;
+let map3d = null;
+let pendingReportPoint = null;
 function showFallback(title, body) {
   fallback.style.display = 'flex';
   fallback.innerHTML = `<strong>${title}</strong><span>${body}</span>`;
 }
-const colors = { lighting:'#f59e0b', crime:'#ef4444', accident:'#f97316', other:'#64748b' };
+const colors = { lighting:'#f59e0b', crime:'#ef4444', accident:'#f97316', other:'#94a3b8' };
 const levelColors = { Aman:'#3b82f6', Waspada:'#f59e0b', Hindari:'#ef4444' };
 const firstReport = reports[0];
 const tileSize = 256;
@@ -2031,7 +2864,7 @@ const tileSize = 256;
 function renderThreeDimensionalMap() {
   mapEl.classList.add('is-3d');
   if (!window.maplibregl) {
-    showFallback('Tampilan 3D belum termuat', 'Periksa koneksi internet atau kembali ke tampilan 2D.');
+    showFallback('__THREE_D_FAILED_TITLE__', '__THREE_D_FAILED_BODY__');
     return;
   }
 
@@ -2046,6 +2879,7 @@ function renderThreeDimensionalMap() {
     attributionControl: false,
     canvasContextAttributes: { antialias: true },
   });
+  map3d = map;
 
   let styleReady = false;
   map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'top-right');
@@ -2101,14 +2935,14 @@ function renderThreeDimensionalMap() {
         id: 'jalanaman-report-points', type: 'circle', source: 'jalanaman-reports',
         paint: {
           'circle-radius': 8,
-          'circle-color': ['match', ['get', 'category'], 'lighting', '#f59e0b', 'crime', '#ef4444', 'accident', '#f97316', '#64748b'],
+          'circle-color': ['match', ['get', 'category'], 'lighting', '#f59e0b', 'crime', '#ef4444', 'accident', '#f97316', '#94a3b8'],
           'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2,
         },
       });
     }
   });
   setTimeout(() => {
-    if (!styleReady) showFallback('Tampilan 3D belum termuat', 'Periksa koneksi internet atau kembali ke tampilan 2D.');
+    if (!styleReady) showFallback('__THREE_D_FAILED_TITLE__', '__THREE_D_FAILED_BODY__');
   }, 10000);
 }
 
@@ -2261,7 +3095,7 @@ function renderMap(overrideCenter, overrideZoom) {
       img.onerror = () => {
         failed += 1;
         if (failed >= total && loaded === 0) {
-          showFallback('Peta belum termuat', 'Cek koneksi internet lalu coba refresh peta.');
+          showFallback('__MAP_FAILED_TITLE__', '__MAP_FAILED_BODY__');
         }
       };
       tilesEl.appendChild(img);
@@ -2280,7 +3114,7 @@ function renderMap(overrideCenter, overrideZoom) {
   });
 
   setTimeout(() => {
-    if (loaded === 0) showFallback('Peta belum termuat', 'Cek koneksi internet lalu coba refresh peta.');
+    if (loaded === 0) showFallback('__MAP_FAILED_TITLE__', '__MAP_FAILED_BODY__');
   }, 6000);
 }
 
@@ -2300,6 +3134,7 @@ let dragCenterPx = null;
 let dragMoved = false;
 
 function onDragStart(evt) {
+  if (personDragging || evt.target === reportPerson || reportPerson.contains(evt.target)) return;
   if (evt.touches && evt.touches.length > 1) return;
   dragging = true;
   dragMoved = false;
@@ -2309,6 +3144,7 @@ function onDragStart(evt) {
 }
 
 function onDragMove(evt) {
+  if (personDragging) return;
   if (!dragging) return;
   const p = pointFromEvent(evt);
   const dx = p.x - dragStart.x;
@@ -2319,6 +3155,7 @@ function onDragMove(evt) {
 }
 
 function onDragEnd(evt) {
+  if (personDragging) return;
   if (!dragging) return;
   dragging = false;
   mapEl.classList.remove('dragging');
@@ -2353,6 +3190,110 @@ mapEl.addEventListener('dblclick', (evt) => {
 document.getElementById('zoomIn').addEventListener('click', () => renderMap(activeCenter, activeZoom + 1));
 document.getElementById('zoomOut').addEventListener('click', () => renderMap(activeCenter, activeZoom - 1));
 
+let personDragging = false;
+function reportPointFromScreen(clientX, clientY) {
+  const rect = mapEl.getBoundingClientRect();
+  const x = Math.max(12, Math.min(rect.width - 12, clientX - rect.left));
+  const y = Math.max(12, Math.min(rect.height - 12, clientY - rect.top));
+  if (threeDimensional && map3d) {
+    const point = map3d.unproject([x, y]);
+    return { lat:point.lat, lng:point.lng, x, y };
+  }
+  const centerPx = project(activeCenter[0], activeCenter[1], activeZoom);
+  const selected = unproject(
+    centerPx.x + x - rect.width / 2,
+    centerPx.y + y - rect.height / 2,
+    activeZoom
+  );
+  return { lat:selected[1], lng:selected[0], x, y };
+}
+function moveReportPerson(clientX, clientY) {
+  const point = reportPointFromScreen(clientX, clientY);
+  reportPerson.style.left = `${point.x - 21}px`;
+  reportPerson.style.top = `${point.y - 43}px`;
+  reportPerson.style.right = 'auto';
+  return point;
+}
+function drawSelectedConnector(point) {
+  if (!locationPoint || threeDimensional) {
+    selectedLine.innerHTML = '';
+    return;
+  }
+  const rect = mapEl.getBoundingClientRect();
+  const centerPx = project(activeCenter[0], activeCenter[1], activeZoom);
+  const start = screenPoint(locationPoint.lng, locationPoint.lat, centerPx, rect.width, rect.height, activeZoom);
+  selectedLine.setAttribute('viewBox', `0 0 ${rect.width} ${rect.height}`);
+  selectedLine.innerHTML = `<line x1='${start.x}' y1='${start.y}' x2='${point.x}' y2='${point.y}' stroke='rgb(245,158,11)' stroke-width='4' stroke-linecap='round' stroke-dasharray='7 7' opacity='.9'/>`;
+}
+function startPersonDrag(event) {
+  if (!selectable) return;
+  dragging = false;
+  viewportEl.style.transform = 'translate(0px, 0px)';
+  mapEl.classList.remove('dragging');
+  personDragging = true;
+  if (map3d) {
+    map3d.dragPan.disable();
+    map3d.touchZoomRotate.disable();
+    map3d.scrollZoom.disable();
+  }
+  confirmMark.style.display = 'none';
+  markHint.style.display = 'none';
+  reportPerson.classList.add('dragging');
+  reportPerson.setPointerCapture?.(event.pointerId);
+  event.stopPropagation();
+  event.preventDefault();
+}
+function movePersonDrag(event) {
+  if (!personDragging) return;
+  pendingReportPoint = moveReportPerson(event.clientX, event.clientY);
+  dragCoords.textContent = `${pendingReportPoint.lat.toFixed(5)}, ${pendingReportPoint.lng.toFixed(5)}`;
+  drawSelectedConnector(pendingReportPoint);
+  event.stopPropagation();
+  event.preventDefault();
+}
+function finishPersonDrag(event) {
+  if (!personDragging) return;
+  personDragging = false;
+  pendingReportPoint = moveReportPerson(event.clientX, event.clientY);
+  drawSelectedConnector(pendingReportPoint);
+  reportPerson.classList.remove('dragging');
+  if (map3d) {
+    map3d.dragPan.enable();
+    map3d.touchZoomRotate.enable();
+    map3d.scrollZoom.enable();
+  }
+  confirmCoords.textContent = `${pendingReportPoint.lat.toFixed(6)}, ${pendingReportPoint.lng.toFixed(6)}`;
+  confirmMark.style.display = 'block';
+  markHint.style.display = 'none';
+  event.stopPropagation();
+  event.preventDefault();
+}
+reportPerson.addEventListener('pointerdown', startPersonDrag);
+reportPerson.addEventListener('pointermove', movePersonDrag);
+reportPerson.addEventListener('pointerup', finishPersonDrag);
+reportPerson.addEventListener('pointercancel', finishPersonDrag);
+for (const eventName of ['touchstart', 'touchmove', 'touchend', 'mousedown', 'mousemove', 'mouseup']) {
+  reportPerson.addEventListener(eventName, event => {
+    event.stopPropagation();
+    if (event.cancelable) event.preventDefault();
+  }, { passive:false });
+}
+window.addEventListener('pointermove', movePersonDrag);
+window.addEventListener('pointerup', finishPersonDrag);
+document.getElementById('cancelmark').addEventListener('click', () => {
+  confirmMark.style.display = 'none';
+  markHint.style.display = 'block';
+});
+document.getElementById('acceptmark').addEventListener('click', () => {
+  if (!pendingReportPoint) return;
+  window.parent.postMessage({
+    type:'jalanaman-map-report',
+    lat:pendingReportPoint.lat,
+    lng:pendingReportPoint.lng
+  }, '*');
+  confirmMark.style.display = 'none';
+});
+
 try {
   if (threeDimensional) {
     renderThreeDimensionalMap();
@@ -2360,7 +3301,7 @@ try {
     renderMap();
   }
 } catch (_) {
-  showFallback(threeDimensional ? 'Tampilan 3D belum termuat' : 'Peta belum termuat', threeDimensional ? 'Periksa koneksi internet atau kembali ke tampilan 2D.' : 'Cek koneksi internet lalu coba refresh peta.');
+  showFallback(threeDimensional ? '__THREE_D_FAILED_TITLE__' : '__MAP_FAILED_TITLE__', threeDimensional ? '__THREE_D_FAILED_BODY__' : '__MAP_FAILED_BODY__');
 }
 </script>
 </body>
@@ -2370,6 +3311,17 @@ try {
         .replace("__ROUTE__", &route_json)
         .replace("__ROUTE_LEVEL__", &route_level_json)
         .replace("__THREE_DIMENSIONAL__", three_dimensional_json)
+        .replace("__SELECTABLE__", selectable_json)
+        .replace("__LOADING_TITLE__", loading_title)
+        .replace("__LOADING_BODY__", loading_body)
+        .replace("__MAP_FAILED_TITLE__", map_failed_title)
+        .replace("__MAP_FAILED_BODY__", map_failed_body)
+        .replace("__THREE_D_FAILED_TITLE__", three_d_failed_title)
+        .replace("__THREE_D_FAILED_BODY__", three_d_failed_body)
+        .replace("__MARK_HINT__", mark_hint)
+        .replace("__MARK_CONFIRM__", mark_confirm)
+        .replace("__MARK_CANCEL__", mark_cancel)
+        .replace("__MARK_ACCEPT__", mark_accept)
 }
 
 fn local_route_score(waypoints: &[Waypoint], reports: &[Report]) -> RouteScoreResponse {
@@ -2439,17 +3391,17 @@ fn distance_to_route_segment_m(lat: f64, lng: f64, a: &Waypoint, b: &Waypoint) -
 
 fn level_bg(level: &str) -> &'static str {
     match level {
-        "Aman" => "#dbeafe",
-        "Waspada" => "#fef3c7",
-        _ => "#fee2e2",
+        "Aman" => "rgba(37,99,235,0.24)",
+        "Waspada" => "rgba(146,64,14,0.28)",
+        _ => "rgba(127,29,29,0.30)",
     }
 }
 
 fn level_color(level: &str) -> &'static str {
     match level {
-        "Aman" => "#1e40af",
-        "Waspada" => "#92400e",
-        _ => "#991b1b",
+        "Aman" => "#bfdbfe",
+        "Waspada" => "#fde68a",
+        _ => "#fecdd3",
     }
 }
 
@@ -2461,12 +3413,53 @@ fn distance_label(meters: f64) -> String {
     }
 }
 
-fn duration_label(seconds: f64) -> String {
+fn duration_label(seconds: f64, language: Language) -> String {
     let minutes = (seconds / 60.0).round().max(1.0);
     if minutes < 60.0 {
-        format!("{minutes:.0} mnt")
+        if language.is_indonesian() {
+            format!("{minutes:.0} mnt")
+        } else {
+            format!("{minutes:.0} min")
+        }
     } else {
-        format!("{:.1} jam", minutes / 60.0)
+        if language.is_indonesian() {
+            format!("{:.1} jam", minutes / 60.0)
+        } else {
+            format!("{:.1} h", minutes / 60.0)
+        }
+    }
+}
+
+fn localized_level(level: &str, language: Language) -> &'static str {
+    match language {
+        Language::Indonesian => match level {
+            "Aman" => "Aman",
+            "Waspada" => "Waspada",
+            _ => "Hindari",
+        },
+        Language::English => match level {
+            "Aman" => "Safe",
+            "Waspada" => "Caution",
+            _ => "Avoid",
+        },
+    }
+}
+
+fn route_overlay_title(score: &RouteScoreResponse, language: Language) -> String {
+    if language.is_indonesian() {
+        format!(
+            "{} dengan {} {}",
+            localized_level(&score.level, language),
+            score.report_count,
+            language.text(CopyKey::RouteReportsSuffix)
+        )
+    } else {
+        format!(
+            "{} with {} {}",
+            localized_level(&score.level, language),
+            score.report_count,
+            language.text(CopyKey::RouteReportsSuffix)
+        )
     }
 }
 
