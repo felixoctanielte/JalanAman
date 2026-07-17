@@ -85,6 +85,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.CancellationSignal
 import android.os.Looper
+import android.util.Log
 import android.webkit.JavascriptInterface
 import org.json.JSONObject
 import java.util.concurrent.CountDownLatch
@@ -93,6 +94,10 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
 class JalanAmanLocationBridge(private val context: Context) {
+  companion object {
+    private const val TAG = "JalanAmanNative"
+  }
+
   @JavascriptInterface
   fun requestAppPermissionsJson(): String {
     return try {
@@ -115,10 +120,13 @@ class JalanAmanLocationBridge(private val context: Context) {
       if (!isLocationServiceEnabled(manager)) {
         return JSONObject().put("error", "Layanan lokasi atau GPS belum aktif di HP.").toString()
       }
-      val location = readCurrentLocation(manager) ?: readLastKnownLocation(manager)
+      val lastKnown = readLastKnownLocation(manager)
+      val location = lastKnown ?: readCurrentLocation(manager) ?: waitForLocationUpdate(manager) ?: readLastKnownLocation(manager)
       if (location == null) {
+        Log.w(TAG, "No native location available. providers=${locationProviders(manager).joinToString()}")
         JSONObject().put("error", "Lokasi native belum tersedia.").toString()
       } else {
+        Log.i(TAG, "Native location ${location.provider}: ${location.latitude},${location.longitude}")
         JSONObject()
           .put("lat", location.latitude)
           .put("lng", location.longitude)
@@ -248,6 +256,36 @@ class JalanAmanLocationBridge(private val context: Context) {
 
     latch.await(6, TimeUnit.SECONDS)
     signal.cancel()
+    return current.get()
+  }
+
+  @SuppressLint("MissingPermission")
+  private fun waitForLocationUpdate(manager: LocationManager): Location? {
+    val providers = locationProviders(manager).filter { provider ->
+      provider != LocationManager.PASSIVE_PROVIDER
+    }
+    if (providers.isEmpty()) return null
+
+    val latch = CountDownLatch(1)
+    val current = AtomicReference<Location?>(null)
+    val listener = object : android.location.LocationListener {
+      override fun onLocationChanged(location: Location) {
+        if (current.compareAndSet(null, location)) {
+          latch.countDown()
+        }
+      }
+    }
+
+    providers.forEach { provider ->
+      runCatching {
+        manager.requestLocationUpdates(provider, 0L, 0f, listener, Looper.getMainLooper())
+      }.onFailure { ex ->
+        Log.w(TAG, "requestLocationUpdates failed for $provider: ${ex.message}")
+      }
+    }
+
+    latch.await(9, TimeUnit.SECONDS)
+    runCatching { manager.removeUpdates(listener) }
     return current.get()
   }
 
@@ -435,16 +473,16 @@ if [ -f "$MANIFEST" ] && ! grep -q 'android:launchMode="singleTask"' "$MANIFEST"
   sed -i 's/android:name="dev\.dioxus\.main\.MainActivity"/android:name="dev.dioxus.main.MainActivity" android:launchMode="singleTask"/' "$MANIFEST"
 fi
 
-# Brand the Android chrome: default Dioxus template ships a generic teal/pink Material theme,
-# so the system status bar clashes with JalanAman's blue UI and the app reads as unfinished/boxed
-# instead of full-bleed. AppCompat tints android:statusBarColor from colorPrimaryDark automatically.
+# Brand the Android chrome so the system bars sit quietly around the liquid glass UI.
 if [ -f "$COLORS_XML" ]; then
   cat > "$COLORS_XML" <<'XML'
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="colorPrimary">#1D4ED8</color>
-    <color name="colorPrimaryDark">#0F3D91</color>
+    <color name="colorPrimaryDark">#17181C</color>
     <color name="colorAccent">#2563EB</color>
+    <color name="colorChrome">#17181C</color>
+    <color name="colorNavigation">#020617</color>
 </resources>
 XML
 fi
@@ -453,15 +491,21 @@ if [ -f "$STYLES_XML" ]; then
   cat > "$STYLES_XML" <<'XML'
 <resources>
 
-    <!-- JalanAman theme: blue brand colors so the system status bar matches the in-app chrome. -->
+    <!-- JalanAman theme: dark system chrome around the liquid glass interface. -->
     <style name="AppTheme" parent="@style/Theme.AppCompat.Light.NoActionBar">
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
-        <item name="android:windowBackground">@color/colorPrimaryDark</item>
+        <item name="android:windowBackground">@color/colorChrome</item>
+        <item name="android:statusBarColor">@color/colorChrome</item>
+        <item name="android:navigationBarColor">@color/colorNavigation</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
     </style>
 </resources>
 XML
 fi
+
+touch "$MANIFEST" "$WEB_VIEW" "$LOCATION_BRIDGE" "$SOS_SERVICE"
 
 echo "Android generated project patched: network, location, notification, vibration permissions, WhatsApp bridge, keyboard resize, and JalanAman brand theme ready."
