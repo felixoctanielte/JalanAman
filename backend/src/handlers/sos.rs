@@ -8,7 +8,6 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 
 use crate::{
-    config::Config,
     error::AppError,
     models::emergency_contact::{
         AddContactPayload, DeleteContactParams, EmergencyContact, GetContactsParams,
@@ -42,7 +41,6 @@ pub struct ContactNotifyResult {
     pub connected: bool,
     pub push_sent: bool,
     pub email_sent: bool,
-    pub whatsapp_sent: bool,
     pub error: Option<String>,
 }
 
@@ -101,7 +99,6 @@ pub async fn trigger_sos(
     for contact in &contacts {
         let mut push_sent = false;
         let mut email_sent = false;
-        let mut whatsapp_sent = false;
         let mut error_msg: Option<String> = None;
 
         // Try push notification first
@@ -121,6 +118,7 @@ pub async fn trigger_sos(
             {
                 Ok(_) => {
                     push_sent = true;
+                    notified_count += 1;
                 }
                 Err(e) => error_msg = Some(format!("push: {e}")),
             }
@@ -144,6 +142,7 @@ pub async fn trigger_sos(
                     {
                         Ok(_) => {
                             email_sent = true;
+                            notified_count += 1;
                         }
                         Err(e) => {
                             let msg = format!("email: {e}");
@@ -157,27 +156,6 @@ pub async fn trigger_sos(
             }
         }
 
-        if let Some(phone) = &contact.phone {
-            if !phone.is_empty() {
-                match send_whatsapp_alert(&state.config, phone, &body_text).await {
-                    Ok(_) => {
-                        whatsapp_sent = true;
-                    }
-                    Err(e) => {
-                        let msg = format!("whatsapp: {e}");
-                        error_msg = Some(match error_msg {
-                            Some(prev) => format!("{prev}; {msg}"),
-                            None => msg,
-                        });
-                    }
-                }
-            }
-        }
-
-        if push_sent || email_sent || whatsapp_sent {
-            notified_count += 1;
-        }
-
         results.push(ContactNotifyResult {
             name: contact.name.clone(),
             connected: contact.push_endpoint.is_some()
@@ -185,7 +163,6 @@ pub async fn trigger_sos(
                 || contact.phone.is_some(),
             push_sent,
             email_sent,
-            whatsapp_sent,
             error: error_msg,
         });
     }
@@ -236,18 +213,60 @@ async fn send_email_alert(
     body: &str,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     use lettre::{
-        message::header::ContentType, transport::smtp::authentication::Credentials,
+        message::{Attachment, MultiPart, SinglePart},
+        transport::smtp::authentication::Credentials,
         AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
     };
+
+    const LOGO: &[u8] = include_bytes!("../../assets/jalanaman-logo-email.png");
+    let escaped_body = escape_html(body).replace('\n', "<br>");
+    let maps_url = body
+        .split_whitespace()
+        .find(|part| part.starts_with("https://maps.google.com/"))
+        .unwrap_or("https://maps.google.com/");
+    let escaped_maps_url = escape_html(maps_url);
+    let escaped_contact_name = escape_html(contact_name);
+    let plain_body = format!(
+        "JALANAMAN_SOS_TRIGGER=1\n\nPemberitahuan SOS JalanAman\n\n{body}\n\nHalo {contact_name}, Anda menerima email ini karena alamat ini didaftarkan sebagai kontak darurat di JalanAman. JalanAman tidak meminta password, OTP, atau pembayaran melalui email ini. Jika situasi darurat, segera hubungi orang terkait atau layanan darurat 112."
+    );
+    let html_body = format!(
+        r#"<!doctype html>
+<html lang="id"><body style="margin:0;background:#f1f5f9;color:#0f172a;font-family:Arial,Helvetica,sans-serif;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f1f5f9;padding:24px 12px;"><tr><td align="center">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border:1px solid #dbeafe;border-radius:14px;overflow:hidden;">
+<tr><td style="padding:24px;text-align:center;background:#eff6ff;border-bottom:1px solid #dbeafe;">
+<img src="cid:jalanaman-logo" width="72" height="72" alt="Logo JalanAman" style="display:block;margin:0 auto 10px;width:72px;height:72px;">
+<div style="font-size:22px;font-weight:700;color:#0f3d91;">JalanAman</div>
+<div style="margin-top:5px;font-size:13px;color:#475569;">Pemberitahuan untuk kontak darurat terdaftar</div>
+</td></tr>
+<tr><td style="padding:24px;">
+<h1 style="margin:0 0 14px;font-size:22px;line-height:1.3;color:#b91c1c;">Permintaan bantuan SOS</h1>
+<p style="margin:0 0 18px;font-size:15px;line-height:1.65;color:#334155;">{escaped_body}</p>
+<table role="presentation" cellspacing="0" cellpadding="0"><tr><td style="border-radius:8px;background:#1d4ed8;"><a href="{escaped_maps_url}" style="display:inline-block;padding:12px 18px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;">Buka lokasi di Google Maps</a></td></tr></table>
+<p style="margin:14px 0 0;font-size:12px;line-height:1.5;color:#64748b;word-break:break-all;">Alamat lokasi: {escaped_maps_url}</p>
+<div style="margin-top:22px;padding:14px;border:1px solid #dbeafe;border-radius:8px;background:#f8fbff;font-size:13px;line-height:1.6;color:#475569;">Halo {escaped_contact_name}, email ini dikirim karena alamat Anda didaftarkan sebagai kontak darurat di JalanAman. Kami tidak meminta password, OTP, data pembayaran, atau balasan berisi informasi pribadi.</div>
+<p style="margin:20px 0 0;font-size:13px;line-height:1.6;color:#334155;">Jika ini benar-benar darurat, segera hubungi orang terkait atau layanan darurat <strong>112</strong>.</p>
+</td></tr>
+<tr><td style="padding:16px 24px;border-top:1px solid #e2e8f0;background:#f8fafc;font-size:11px;line-height:1.5;color:#64748b;">Dikirim otomatis oleh JalanAman. Tidak ada pelacak iklan atau lampiran yang perlu dibuka.</td></tr>
+</table></td></tr></table></body></html>"#
+    );
 
     let email = Message::builder()
         .from(smtp_from.parse()?)
         .to(format!("{contact_name} <{to_email}>").parse()?)
-        .subject("🆘 SOS DARURAT - JalanAman")
-        .header(ContentType::TEXT_PLAIN)
-        .body(format!(
-            "{body}\n\nPesan ini dikirim otomatis oleh aplikasi JalanAman.\nJika ini darurat, segera hubungi 112."
-        ))?;
+        .subject("[JALANAMAN-SOS] Pemberitahuan darurat untuk kontak terdaftar")
+        .multipart(
+            MultiPart::alternative()
+                .singlepart(SinglePart::plain(plain_body))
+                .multipart(
+                    MultiPart::related()
+                        .singlepart(SinglePart::html(html_body))
+                        .singlepart(
+                            Attachment::new_inline("jalanaman-logo".to_string())
+                                .body(LOGO.to_vec(), "image/png".parse()?),
+                        ),
+                ),
+        )?;
 
     let creds = Credentials::new(smtp_user.to_string(), smtp_pass.to_string());
     let mailer = AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(smtp_host)?
@@ -259,137 +278,13 @@ async fn send_email_alert(
     Ok(())
 }
 
-async fn send_whatsapp_alert(
-    config: &Config,
-    to_phone: &str,
-    body: &str,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let access_token = config.whatsapp_access_token.trim();
-    let phone_number_id = config.whatsapp_phone_number_id.trim();
-
-    if access_token.is_empty() || phone_number_id.is_empty() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "WhatsApp Cloud API belum dikonfigurasi",
-        )
-        .into());
-    }
-
-    let Some(to) = normalize_whatsapp_phone(to_phone) else {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "nomor WhatsApp tidak valid",
-        )
-        .into());
-    };
-
-    let api_version = config
-        .whatsapp_graph_api_version
-        .trim()
-        .trim_start_matches('/');
-    let endpoint = format!("https://graph.facebook.com/{api_version}/{phone_number_id}/messages");
-
-    let payload = if config.whatsapp_template_name.trim().is_empty() {
-        json!({
-            "messaging_product": "whatsapp",
-            "recipient_type": "individual",
-            "to": to,
-            "type": "text",
-            "text": {
-                "preview_url": true,
-                "body": body,
-            },
-        })
-    } else {
-        json!({
-            "messaging_product": "whatsapp",
-            "to": to,
-            "type": "template",
-            "template": {
-                "name": config.whatsapp_template_name.trim(),
-                "language": {
-                    "code": config.whatsapp_template_language.trim(),
-                },
-                "components": [
-                    {
-                        "type": "body",
-                        "parameters": [
-                            {
-                                "type": "text",
-                                "text": body,
-                            }
-                        ]
-                    }
-                ]
-            }
-        })
-    };
-
-    let response = reqwest::Client::new()
-        .post(endpoint)
-        .bearer_auth(access_token)
-        .json(&payload)
-        .send()
-        .await?;
-
-    let status = response.status();
-    let response_text = response.text().await.unwrap_or_default();
-    if !status.is_success() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("Cloud API {status}: {response_text}"),
-        )
-        .into());
-    }
-
-    Ok(())
-}
-
-fn normalize_whatsapp_phone(value: &str) -> Option<String> {
-    let mut digits = value
-        .chars()
-        .filter(|ch| ch.is_ascii_digit())
-        .collect::<String>();
-
-    if digits.is_empty() {
-        return None;
-    }
-
-    if digits.starts_with("00") {
-        digits = digits.trim_start_matches("00").to_string();
-    } else if digits.starts_with('0') {
-        digits = format!("62{}", digits.trim_start_matches('0'));
-    } else if digits.starts_with('8') {
-        digits = format!("62{digits}");
-    }
-
-    (digits.len() >= 8).then_some(digits)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::normalize_whatsapp_phone;
-
-    #[test]
-    fn normalizes_indonesian_whatsapp_numbers() {
-        assert_eq!(
-            normalize_whatsapp_phone("0812-3456-7890").as_deref(),
-            Some("6281234567890")
-        );
-        assert_eq!(
-            normalize_whatsapp_phone("81234567890").as_deref(),
-            Some("6281234567890")
-        );
-        assert_eq!(
-            normalize_whatsapp_phone("+62 812 3456 7890").as_deref(),
-            Some("6281234567890")
-        );
-        assert_eq!(
-            normalize_whatsapp_phone("0062 812 3456 7890").as_deref(),
-            Some("6281234567890")
-        );
-        assert_eq!(normalize_whatsapp_phone("abc").as_deref(), None);
-    }
+fn escape_html(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#39;")
 }
 
 // ── Add emergency contact ─────────────────────────────────────────────────────

@@ -15,12 +15,6 @@ pub struct Config {
     pub smtp_user: String,
     pub smtp_pass: String,
     pub smtp_from: String,
-    // WhatsApp Cloud API for automatic SOS WhatsApp delivery.
-    pub whatsapp_access_token: String,
-    pub whatsapp_phone_number_id: String,
-    pub whatsapp_template_name: String,
-    pub whatsapp_template_language: String,
-    pub whatsapp_graph_api_version: String,
 }
 
 impl Config {
@@ -46,16 +40,15 @@ impl Config {
                 .parse()
                 .unwrap_or(587),
             smtp_user: env::var("SMTP_USER").unwrap_or_default(),
-            smtp_pass: env::var("SMTP_PASS").unwrap_or_default(),
+            // Google displays App Passwords in four groups. Accept pasted
+            // values with spaces/newlines and pass the canonical 16 chars.
+            smtp_pass: env::var("SMTP_PASS")
+                .unwrap_or_default()
+                .chars()
+                .filter(|ch| !ch.is_whitespace())
+                .collect(),
             smtp_from: env::var("SMTP_FROM")
                 .unwrap_or_else(|_| "JalanAman SOS <sos@jalanaman.id>".to_string()),
-            whatsapp_access_token: env::var("WHATSAPP_ACCESS_TOKEN").unwrap_or_default(),
-            whatsapp_phone_number_id: env::var("WHATSAPP_PHONE_NUMBER_ID").unwrap_or_default(),
-            whatsapp_template_name: env::var("WHATSAPP_TEMPLATE_NAME").unwrap_or_default(),
-            whatsapp_template_language: env::var("WHATSAPP_TEMPLATE_LANGUAGE")
-                .unwrap_or_else(|_| "id".to_string()),
-            whatsapp_graph_api_version: env::var("WHATSAPP_GRAPH_API_VERSION")
-                .unwrap_or_else(|_| "v23.0".to_string()),
         })
     }
 }
