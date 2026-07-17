@@ -33,6 +33,12 @@ enum MobileTab {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+enum MapPresentation {
+    TwoDimensional,
+    ThreeDimensional,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum NavIconKind {
     Map,
     Route,
@@ -194,6 +200,7 @@ const MOTION_CSS: &str = r#"
 #[component]
 fn Home() -> Element {
     let mut active_tab = use_signal(|| MobileTab::Map);
+    let mut map_presentation = use_signal(|| MapPresentation::TwoDimensional);
     let mut show_splash = use_signal(|| true);
     let mut device_hash = use_signal(String::new);
     let mut location = use_signal(|| Option::<GeoPoint>::None);
@@ -327,6 +334,7 @@ fn Home() -> Element {
     });
 
     let active_tab_value = *active_tab.read();
+    let map_presentation_value = *map_presentation.read();
     let location_value = *location.read();
     let report_category_value = *report_category.read();
     let report_note_value = report_note.read().clone();
@@ -340,6 +348,7 @@ fn Home() -> Element {
         &reports_value,
         directions_value.as_ref().map(|d| d.polyline.as_slice()),
         route_score_value.as_ref().map(|s| s.level.as_str()),
+        map_presentation_value == MapPresentation::ThreeDimensional,
     );
 
     rsx! {
@@ -373,6 +382,8 @@ fn Home() -> Element {
                             manual_lat: manual_lat.read().clone(),
                             manual_lng: manual_lng.read().clone(),
                             manual_error: manual_location_error.read().clone(),
+                            presentation: map_presentation_value,
+                            on_presentation: move |presentation| map_presentation.set(presentation),
                             on_report: move |_| active_tab.set(MobileTab::Report),
                             on_manual_lat: move |value| manual_lat.set(limit_text(value, 24)),
                             on_manual_lng: move |value| manual_lng.set(limit_text(value, 24)),
@@ -846,6 +857,8 @@ fn MapView(
     manual_lat: String,
     manual_lng: String,
     manual_error: Option<String>,
+    presentation: MapPresentation,
+    on_presentation: EventHandler<MapPresentation>,
     on_report: EventHandler<MouseEvent>,
     on_manual_lat: EventHandler<String>,
     on_manual_lng: EventHandler<String>,
@@ -873,6 +886,18 @@ fn MapView(
                     div { style: "margin-top:2px;font-size:10px;color:#64748b;font-weight:750;", "{gps_label}" }
                 }
                 div { style: MAP_PROVIDER, "Peta langsung" }
+                div { style: "position:absolute;right:12px;top:12px;z-index:3;display:flex;gap:5px;padding:4px;border:1px solid rgba(147,197,253,0.82);border-radius:8px;background:rgba(255,255,255,0.94);box-shadow:0 8px 18px rgba(30,64,175,0.14);",
+                    button {
+                        style: if presentation == MapPresentation::TwoDimensional { "height:29px;min-width:38px;border:0;border-radius:6px;background:#1d4ed8;color:#ffffff;font-size:10px;font-weight:950;" } else { "height:29px;min-width:38px;border:0;border-radius:6px;background:transparent;color:#475569;font-size:10px;font-weight:850;" },
+                        onclick: move |_| on_presentation.call(MapPresentation::TwoDimensional),
+                        "2D"
+                    }
+                    button {
+                        style: if presentation == MapPresentation::ThreeDimensional { "height:29px;min-width:38px;border:0;border-radius:6px;background:#1d4ed8;color:#ffffff;font-size:10px;font-weight:950;" } else { "height:29px;min-width:38px;border:0;border-radius:6px;background:transparent;color:#475569;font-size:10px;font-weight:850;" },
+                        onclick: move |_| on_presentation.call(MapPresentation::ThreeDimensional),
+                        "3D"
+                    }
+                }
                 button {
                     style: REPORT_FAB,
                     title: "Lapor cepat",
@@ -1912,6 +1937,7 @@ fn map_srcdoc(
     reports: &[Report],
     route: Option<&[Waypoint]>,
     route_level: Option<&str>,
+    three_dimensional: bool,
 ) -> String {
     let location_json = serde_json::to_string(&location).unwrap_or_else(|_| "null".to_string());
     let reports_json = serde_json::to_string(
@@ -1931,12 +1957,14 @@ fn map_srcdoc(
         serde_json::to_string(&route.unwrap_or(&[])).unwrap_or_else(|_| "[]".to_string());
     let route_level_json = serde_json::to_string(&route_level.unwrap_or("Aman"))
         .unwrap_or_else(|_| "\"Aman\"".to_string());
+    let three_dimensional_json = if three_dimensional { "true" } else { "false" };
 
     r#"<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" />
   <style>
     html, body, #map { margin:0; width:100%; height:100%; overflow:hidden; background:#dbeafe; }
     #map { position:relative; touch-action:none; cursor:grab; font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
@@ -1956,6 +1984,9 @@ fn map_srcdoc(
     #zoomctl { position:absolute; right:10px; top:50%; transform:translateY(-50%); z-index:5; display:flex; flex-direction:column; border-radius:10px; overflow:hidden; box-shadow:0 10px 20px rgba(15,23,42,.22); }
     #zoomctl button { display:block; width:34px; height:34px; border:0; background:rgba(255,255,255,0.96); color:#1d4ed8; font:900 18px/34px system-ui; padding:0; }
     #zoomctl button:first-child { border-bottom:1px solid #dbeafe; }
+    #map.is-3d #viewport, #map.is-3d #zoomctl { display:none; }
+    .ja-me-3d { width:20px; height:20px; border-radius:50%; background:#1d4ed8; border:3px solid #fff; box-shadow:0 0 0 14px rgba(37,99,235,.17),0 10px 22px rgba(15,23,42,.26); box-sizing:border-box; }
+    .maplibregl-ctrl-group { border-radius:8px; overflow:hidden; box-shadow:0 10px 20px rgba(15,23,42,.22); }
   </style>
 </head>
 <body>
@@ -1971,11 +2002,13 @@ fn map_srcdoc(
   </div>
   <div id="fallback"><strong>Memuat peta</strong><span>Menyiapkan jalan dan laporan di sekitarmu.</span></div>
 </div>
+<script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
 <script>
 const locationPoint = __LOCATION__;
 const reports = __REPORTS__;
 const route = __ROUTE__;
 const routeLevel = __ROUTE_LEVEL__;
+const threeDimensional = __THREE_DIMENSIONAL__;
 const mapEl = document.getElementById('map');
 const viewportEl = document.getElementById('viewport');
 const tilesEl = document.getElementById('tiles');
@@ -1994,6 +2027,90 @@ const colors = { lighting:'#f59e0b', crime:'#ef4444', accident:'#f97316', other:
 const levelColors = { Aman:'#3b82f6', Waspada:'#f59e0b', Hindari:'#ef4444' };
 const firstReport = reports[0];
 const tileSize = 256;
+
+function renderThreeDimensionalMap() {
+  mapEl.classList.add('is-3d');
+  if (!window.maplibregl) {
+    showFallback('Tampilan 3D belum termuat', 'Periksa koneksi internet atau kembali ke tampilan 2D.');
+    return;
+  }
+
+  const map = new maplibregl.Map({
+    container: 'map',
+    style: 'https://tiles.openfreemap.org/styles/liberty',
+    center: baseCenter(),
+    zoom: route.length > 1 ? 13.5 : (locationPoint || firstReport ? 16 : 11),
+    pitch: 54,
+    bearing: -24,
+    maxPitch: 70,
+    attributionControl: false,
+    canvasContextAttributes: { antialias: true },
+  });
+
+  let styleReady = false;
+  map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'top-right');
+  map.on('load', () => {
+    styleReady = true;
+    fallback.style.display = 'none';
+
+    const layers = map.getStyle().layers || [];
+    const labelLayer = layers.find(layer => layer.type === 'symbol' && layer.layout && layer.layout['text-field']);
+    map.addSource('jalanaman-buildings', { type: 'vector', url: 'https://tiles.openfreemap.org/planet' });
+    map.addLayer({
+      id: 'jalanaman-3d-buildings',
+      source: 'jalanaman-buildings',
+      'source-layer': 'building',
+      type: 'fill-extrusion',
+      minzoom: 15,
+      filter: ['!=', ['get', 'hide_3d'], true],
+      paint: {
+        'fill-extrusion-color': ['interpolate', ['linear'], ['get', 'render_height'], 0, '#cbd5e1', 80, '#60a5fa', 220, '#1d4ed8'],
+        'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 15, 0, 16, ['get', 'render_height']],
+        'fill-extrusion-base': ['case', ['>=', ['zoom'], 16], ['get', 'render_min_height'], 0],
+        'fill-extrusion-opacity': 0.88,
+      },
+    }, labelLayer && labelLayer.id);
+
+    if (route.length > 1) {
+      map.addSource('jalanaman-route', {
+        type: 'geojson',
+        data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: route.map(point => [point.lng, point.lat]) } },
+      });
+      map.addLayer({
+        id: 'jalanaman-route-line', type: 'line', source: 'jalanaman-route',
+        paint: { 'line-color': levelColors[routeLevel] || '#1d4ed8', 'line-width': 6, 'line-opacity': 0.94 },
+      });
+      const destination = route[route.length - 1];
+      new maplibregl.Marker({ color: '#1d4ed8' }).setLngLat([destination.lng, destination.lat]).addTo(map);
+      const bounds = route.reduce((value, point) => value.extend([point.lng, point.lat]), new maplibregl.LngLatBounds(route[0], route[0]));
+      map.fitBounds(bounds, { padding: { top: 64, right: 52, bottom: 92, left: 52 }, maxZoom: 16, pitch: 54, bearing: -24, duration: 0 });
+    }
+
+    if (locationPoint) {
+      const marker = document.createElement('div');
+      marker.className = 'ja-me-3d';
+      new maplibregl.Marker({ element: marker, anchor: 'center' }).setLngLat([locationPoint.lng, locationPoint.lat]).addTo(map);
+    }
+
+    if (reports.length) {
+      map.addSource('jalanaman-reports', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: reports.map(report => ({ type: 'Feature', properties: { category: report.category }, geometry: { type: 'Point', coordinates: [report.lng, report.lat] } })) },
+      });
+      map.addLayer({
+        id: 'jalanaman-report-points', type: 'circle', source: 'jalanaman-reports',
+        paint: {
+          'circle-radius': 8,
+          'circle-color': ['match', ['get', 'category'], 'lighting', '#f59e0b', 'crime', '#ef4444', 'accident', '#f97316', '#64748b'],
+          'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2,
+        },
+      });
+    }
+  });
+  setTimeout(() => {
+    if (!styleReady) showFallback('Tampilan 3D belum termuat', 'Periksa koneksi internet atau kembali ke tampilan 2D.');
+  }, 10000);
+}
 
 function baseCenter() {
   if (locationPoint) return [locationPoint.lng, locationPoint.lat];
@@ -2237,9 +2354,13 @@ document.getElementById('zoomIn').addEventListener('click', () => renderMap(acti
 document.getElementById('zoomOut').addEventListener('click', () => renderMap(activeCenter, activeZoom - 1));
 
 try {
-  renderMap();
+  if (threeDimensional) {
+    renderThreeDimensionalMap();
+  } else {
+    renderMap();
+  }
 } catch (_) {
-  showFallback('Peta belum termuat', 'Cek koneksi internet lalu coba refresh peta.');
+  showFallback(threeDimensional ? 'Tampilan 3D belum termuat' : 'Peta belum termuat', threeDimensional ? 'Periksa koneksi internet atau kembali ke tampilan 2D.' : 'Cek koneksi internet lalu coba refresh peta.');
 }
 </script>
 </body>
@@ -2248,6 +2369,7 @@ try {
         .replace("__REPORTS__", &reports_json)
         .replace("__ROUTE__", &route_json)
         .replace("__ROUTE_LEVEL__", &route_level_json)
+        .replace("__THREE_DIMENSIONAL__", three_dimensional_json)
 }
 
 fn local_route_score(waypoints: &[Waypoint], reports: &[Report]) -> RouteScoreResponse {
