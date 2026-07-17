@@ -23,6 +23,7 @@ Aplikasi mobile PWA + dashboard web berbasis laporan komunitas (*crowd-sourced*)
 - Push notification ke kontak darurat adalah **best-effort**: tunduk pada setting notifikasi perangkat penerima dan status koneksi. Bukan *critical alert* yang bypass DND.
 - Kontak darurat harus membuka link undangan dan mengizinkan notifikasi **sebelum** SOS diperlukan.
 - Alarm suara **lokal** di device pengirim selalu bunyi — tidak butuh koneksi internet.
+- Alarm berbasis email memerlukan rule Tasker/MacroDroid di HP kontak. Gunakan pemicu notifikasi Gmail yang memuat `[JALANAMAN-SOS]`, lalu atur aksi memainkan alarm, menyalakan layar, dan mengulang getaran. Isi email juga memiliki marker `JALANAMAN_SOS_TRIGGER=1` agar mudah difilter.
 
 ---
 

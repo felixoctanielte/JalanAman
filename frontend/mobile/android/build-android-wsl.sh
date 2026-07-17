@@ -42,4 +42,10 @@ if [ -n "$AAPT_PATH" ] && ! "$AAPT_PATH" dump permissions "$APK_PATH" | grep -q 
   exit 1
 fi
 
+if command -v unzip >/dev/null 2>&1 \
+  && ! unzip -p "$APK_PATH" 'classes*.dex' 2>/dev/null | grep -a -q "JalanAmanNative"; then
+  echo "APK dibuat tanpa bridge lokasi native. Menjalankan clean rebuild Android." >&2
+  (cd "$ANDROID_APP_DIR" && ./gradlew clean assembleDebug)
+fi
+
 echo "APK siap dipasang: $APK_PATH"

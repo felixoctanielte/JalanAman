@@ -40,7 +40,13 @@ impl Config {
                 .parse()
                 .unwrap_or(587),
             smtp_user: env::var("SMTP_USER").unwrap_or_default(),
-            smtp_pass: env::var("SMTP_PASS").unwrap_or_default(),
+            // Google displays App Passwords in four groups. Accept pasted
+            // values with spaces/newlines and pass the canonical 16 chars.
+            smtp_pass: env::var("SMTP_PASS")
+                .unwrap_or_default()
+                .chars()
+                .filter(|ch| !ch.is_whitespace())
+                .collect(),
             smtp_from: env::var("SMTP_FROM")
                 .unwrap_or_else(|_| "JalanAman SOS <sos@jalanaman.id>".to_string()),
         })
