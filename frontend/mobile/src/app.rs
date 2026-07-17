@@ -535,6 +535,12 @@ struct LocationEval {
     error: Option<String>,
 }
 
+#[derive(Clone, Debug, Deserialize)]
+struct MapSelectionEval {
+    lat: f64,
+    lng: f64,
+}
+
 #[derive(Serialize)]
 struct MapReport {
     id: String,
@@ -690,6 +696,7 @@ fn Home() -> Element {
     let mut report_note = use_signal(String::new);
     let mut report_loading = use_signal(|| false);
     let mut report_error = use_signal(|| Option::<String>::None);
+    let mut report_location = use_signal(|| Option::<GeoPoint>::None);
     let mut destination = use_signal(String::new);
     let mut directions = use_signal(|| Option::<DirectionsResponse>::None);
     let mut route_score = use_signal(|| Option::<RouteScoreResponse>::None);
@@ -716,6 +723,41 @@ fn Home() -> Element {
     use_future(move || async move {
         tokio::time::sleep(Duration::from_millis(1450)).await;
         show_splash.set(false);
+    });
+
+    use_future(move || async move {
+        loop {
+            let eval = document::eval(
+                r#"
+                return await new Promise((resolve) => {
+                    const receive = (event) => {
+                        const data = event.data;
+                        if (!data || data.type !== 'jalanaman-map-report') return;
+                        window.removeEventListener('message', receive);
+                        resolve({ lat: data.lat, lng: data.lng });
+                    };
+                    window.addEventListener('message', receive);
+                });
+                "#,
+            );
+
+            let Ok(value) = eval.await else {
+                continue;
+            };
+            let Ok(selected) = MapSelectionEval::deserialize(&value) else {
+                continue;
+            };
+            if !selected.lat.is_finite() || !selected.lng.is_finite() {
+                continue;
+            }
+
+            report_location.set(Some(GeoPoint {
+                lat: selected.lat,
+                lng: selected.lng,
+            }));
+            report_error.set(None);
+            active_tab.set(MobileTab::Report);
+        }
     });
 
     use_future(move || async move {
@@ -824,10 +866,20 @@ fn Home() -> Element {
     let map_html = map_srcdoc(
         location_value,
         &reports_value,
+        None,
+        None,
+        map_presentation_value == MapPresentation::ThreeDimensional,
+        language_value,
+        true,
+    );
+    let route_map_html = map_srcdoc(
+        location_value,
+        &reports_value,
         directions_value.as_ref().map(|d| d.polyline.as_slice()),
         route_score_value.as_ref().map(|s| s.level.as_str()),
         map_presentation_value == MapPresentation::ThreeDimensional,
         language_value,
+        false,
     );
     let next_language = language_value.toggled();
 
@@ -875,7 +927,6 @@ fn Home() -> Element {
                             manual_error: manual_location_error.read().clone(),
                             presentation: map_presentation_value,
                             on_presentation: move |presentation| map_presentation.set(presentation),
-                            on_report: move |_| active_tab.set(MobileTab::Report),
                             on_manual_lat: move |value| manual_lat.set(limit_text(value, 24)),
                             on_manual_lng: move |value| manual_lng.set(limit_text(value, 24)),
                             on_manual_apply: move |_| {
@@ -930,7 +981,7 @@ fn Home() -> Element {
                     } else if active_tab_value == MobileTab::Route {
                         RouteView {
                             destination: destination_value,
-                            map_html: map_html.clone(),
+                            map_html: route_map_html,
                             directions: directions_value,
                             score: route_score_value,
                             language: language_value,
@@ -1042,17 +1093,27 @@ fn Home() -> Element {
                             },
                         }
                     } else if active_tab_value == MobileTab::Report {
+                        {
+                            let selected_report_location =
+                                report_location.read().as_ref().copied().or(location_value);
+                            rsx! {
                         ReportView {
                             category: report_category_value,
                             language: language_value,
                             note: report_note_value,
-                            location: location_value,
+                            location: selected_report_location,
+                            location_was_selected: report_location.read().is_some(),
                             loading: *report_loading.read(),
                             error: report_error.read().clone(),
                             on_category: move |category| report_category.set(category),
                             on_note: move |value| report_note.set(limit_text(value, 100)),
                             on_submit: move |_| {
-                                let Some(point) = *location.read() else {
+                                let point = report_location
+                                    .read()
+                                    .as_ref()
+                                    .copied()
+                                    .or(*location.read());
+                                let Some(point) = point else {
                                     report_error.set(Some(language_value.text(CopyKey::ReportNeedsLocation).to_string()));
                                     return;
                                 };
@@ -1078,6 +1139,7 @@ fn Home() -> Element {
                                         Ok(report) => {
                                             reports.write().insert(0, report);
                                             report_note.set(String::new());
+                                            report_location.set(None);
                                             active_tab.set(MobileTab::Map);
                                         }
                                         Err(err) => report_error.set(Some(err)),
@@ -1085,6 +1147,8 @@ fn Home() -> Element {
                                     report_loading.set(false);
                                 });
                             },
+                        }
+                            }
                         }
                     } else if active_tab_value == MobileTab::Contacts {
                         ContactsView {
@@ -1405,7 +1469,6 @@ fn MapView(
     manual_error: Option<String>,
     presentation: MapPresentation,
     on_presentation: EventHandler<MapPresentation>,
-    on_report: EventHandler<MouseEvent>,
     on_manual_lat: EventHandler<String>,
     on_manual_lng: EventHandler<String>,
     on_manual_apply: EventHandler<MouseEvent>,
@@ -1440,7 +1503,6 @@ fn MapView(
                     div { "{title}" }
                     div { style: "margin-top:3px;font-size:10px;color:#cbd5e1;font-weight:800;", "{gps_label}" }
                 }
-                div { style: MAP_PROVIDER, "{language.text(CopyKey::LiveMap)}" }
                 div { style: "position:absolute;right:12px;top:12px;z-index:3;display:flex;gap:5px;padding:4px;border:1px solid rgba(255,255,255,0.18);border-radius:8px;background:rgba(38,41,48,0.78);box-shadow:0 12px 28px rgba(0,0,0,0.26),inset 0 1px 0 rgba(255,255,255,0.16),inset 0 -1px 0 rgba(0,0,0,0.24);backdrop-filter:blur(18px) saturate(170%);-webkit-backdrop-filter:blur(18px) saturate(170%);",
                     button {
                         style: if presentation == MapPresentation::TwoDimensional { "height:31px;min-width:40px;border:0;border-radius:7px;background:#1d4ed8;color:#ffffff;font-size:10px;font-weight:950;box-shadow:0 8px 16px rgba(37,99,235,0.24),inset 0 1px 0 rgba(255,255,255,0.24),inset 0 -1px 0 rgba(0,0,0,0.20);" } else { "height:31px;min-width:40px;border:0;border-radius:7px;background:transparent;color:#cbd5e1;font-size:10px;font-weight:900;" },
@@ -1452,12 +1514,6 @@ fn MapView(
                         onclick: move |_| on_presentation.call(MapPresentation::ThreeDimensional),
                         "3D"
                     }
-                }
-                button {
-                    style: REPORT_FAB,
-                    title: "{language.text(CopyKey::QuickReportTitle)}",
-                    onclick: move |event| on_report.call(event),
-                    "+"
                 }
             }
 
@@ -1674,6 +1730,7 @@ fn ReportView(
     language: Language,
     note: String,
     location: Option<GeoPoint>,
+    location_was_selected: bool,
     loading: bool,
     error: Option<String>,
     on_category: EventHandler<ReportCategory>,
@@ -1713,6 +1770,21 @@ fn ReportView(
                         div { style: TITLE, "{language.text(CopyKey::ReportCategory)}" }
                     }
                     Badge { label: gps_status.to_string(), bg: gps_badge_bg, color: gps_badge_color }
+                }
+
+                if let Some(point) = location {
+                    div { style: "margin-top:12px;padding:10px 11px;border:1px solid rgba(147,197,253,0.30);border-radius:8px;background:rgba(37,99,235,0.14);",
+                        div { style: EYEBROW,
+                            if location_was_selected {
+                                if language.is_indonesian() { "Titik laporan yang dipilih" } else { "Selected report point" }
+                            } else {
+                                if language.is_indonesian() { "Lokasi GPS saat ini" } else { "Current GPS location" }
+                            }
+                        }
+                        div { style: "font-size:13px;font-weight:950;color:#bfdbfe;",
+                            "{point.lat:.6}, {point.lng:.6}"
+                        }
+                    }
                 }
 
                 div { style: CATEGORY_GRID,
@@ -2605,6 +2677,7 @@ fn map_srcdoc(
     route_level: Option<&str>,
     three_dimensional: bool,
     language: Language,
+    selectable: bool,
 ) -> String {
     let location_json = serde_json::to_string(&location).unwrap_or_else(|_| "null".to_string());
     let reports_json = serde_json::to_string(
@@ -2625,6 +2698,7 @@ fn map_srcdoc(
     let route_level_json = serde_json::to_string(&route_level.unwrap_or("Aman"))
         .unwrap_or_else(|_| "\"Aman\"".to_string());
     let three_dimensional_json = if three_dimensional { "true" } else { "false" };
+    let selectable_json = if selectable { "true" } else { "false" };
     let loading_title = if language.is_indonesian() {
         "Memuat peta"
     } else {
@@ -2655,6 +2729,26 @@ fn map_srcdoc(
     } else {
         "Check your internet connection or switch back to 2D."
     };
+    let mark_hint = if language.is_indonesian() {
+        "Seret ikon orang ke lokasi tidak aman"
+    } else {
+        "Drag the person icon to an unsafe location"
+    };
+    let mark_confirm = if language.is_indonesian() {
+        "Laporkan lokasi ini?"
+    } else {
+        "Report this location?"
+    };
+    let mark_cancel = if language.is_indonesian() {
+        "Batal"
+    } else {
+        "Cancel"
+    };
+    let mark_accept = if language.is_indonesian() {
+        "Ya, buat laporan"
+    } else {
+        "Yes, create report"
+    };
 
     r#"<!doctype html>
 <html>
@@ -2681,6 +2775,22 @@ fn map_srcdoc(
     #zoomctl { position:absolute; right:10px; top:50%; transform:translateY(-50%); z-index:5; display:flex; flex-direction:column; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,.18); box-shadow:0 12px 24px rgba(15,23,42,.24),inset 0 1px 0 rgba(255,255,255,.16); backdrop-filter:blur(18px) saturate(170%); -webkit-backdrop-filter:blur(18px) saturate(170%); }
     #zoomctl button { display:block; width:36px; height:36px; border:0; background:rgba(24,27,34,0.72); color:#bfdbfe; font:950 19px/36px system-ui; padding:0; }
     #zoomctl button:first-child { border-bottom:1px solid rgba(255,255,255,.12); }
+    #markhint { position:absolute; left:50%; bottom:12px; transform:translateX(-50%); z-index:5; white-space:nowrap; border:1px solid rgba(255,255,255,.20); border-radius:999px; background:rgba(24,27,34,.80); color:#fff; padding:8px 12px; font:850 10px system-ui; box-shadow:0 10px 22px rgba(0,0,0,.24); pointer-events:none; }
+    @keyframes person-pulse { 0%,100% { transform:scale(1); opacity:.52; } 50% { transform:scale(1.45); opacity:.18; } }
+    #reportperson { position:absolute; right:12px; top:76px; z-index:9; width:42px; height:48px; border:1px solid rgba(255,255,255,.72); border-radius:12px; background:rgba(255,255,255,.96); color:#f59e0b; display:flex; align-items:center; justify-content:center; font:950 27px/1 system-ui; box-shadow:0 12px 28px rgba(0,0,0,.28); touch-action:none; user-select:none; -webkit-user-select:none; cursor:grab; transition:transform 150ms ease,box-shadow 150ms ease; will-change:left,top,transform; }
+    #reportperson::before { content:""; position:absolute; left:9px; right:9px; bottom:-8px; height:8px; border-radius:50%; background:rgba(15,23,42,.38); filter:blur(3px); transition:all 150ms ease; z-index:-1; }
+    #reportperson.dragging { cursor:grabbing; transform:translateY(-12px) scale(1.16); box-shadow:0 22px 38px rgba(0,0,0,.38); }
+    #reportperson.dragging::before { left:3px; right:3px; bottom:-19px; opacity:.62; animation:person-pulse .9s ease-in-out infinite; }
+    #dragcoords { position:absolute; left:50%; top:-27px; transform:translateX(-50%); display:none; white-space:nowrap; padding:5px 8px; border-radius:7px; background:rgba(15,23,42,.92); border:1px solid rgba(255,255,255,.18); color:#fff; font:850 9px/1 system-ui; box-shadow:0 8px 18px rgba(0,0,0,.28); pointer-events:none; }
+    #reportperson.dragging #dragcoords { display:block; }
+    #selectedline { position:absolute; inset:0; z-index:4; pointer-events:none; }
+    #confirmmark { position:absolute; left:50%; bottom:14px; transform:translateX(-50%); width:calc(100% - 28px); max-width:340px; z-index:12; display:none; padding:12px; border:1px solid rgba(255,255,255,.20); border-radius:12px; background:rgba(24,27,34,.96); color:#fff; box-shadow:0 18px 38px rgba(0,0,0,.42); font-family:system-ui; }
+    #confirmmark strong { display:block; font-size:12px; }
+    #confirmmark span { display:block; margin-top:3px; color:#cbd5e1; font-size:10px; }
+    #confirmmark .actions { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-top:10px; }
+    #confirmmark button { height:35px; border-radius:8px; border:1px solid rgba(255,255,255,.18); font:900 11px system-ui; }
+    #cancelmark { background:rgba(255,255,255,.08); color:#cbd5e1; }
+    #acceptmark { background:#1d4ed8; color:#fff; }
     #map.is-3d #viewport, #map.is-3d #zoomctl { display:none; }
     .ja-me-3d { width:20px; height:20px; border-radius:50%; background:#1d4ed8; border:3px solid #fff; box-shadow:0 0 0 14px rgba(37,99,235,.17),0 10px 22px rgba(15,23,42,.26); box-sizing:border-box; }
     #map.is-3d .maplibregl-ctrl-top-right { top:82px; right:10px; }
@@ -2699,6 +2809,17 @@ fn map_srcdoc(
     <button id="zoomIn" type="button">+</button>
     <button id="zoomOut" type="button">&minus;</button>
   </div>
+  <svg id="selectedline"></svg>
+  <div id="reportperson" aria-label="Tandai lokasi tidak aman">🚶<span id="dragcoords"></span></div>
+  <div id="markhint">__MARK_HINT__</div>
+  <div id="confirmmark">
+    <strong>__MARK_CONFIRM__</strong>
+    <span id="confirmcoords"></span>
+    <div class="actions">
+      <button id="cancelmark" type="button">__MARK_CANCEL__</button>
+      <button id="acceptmark" type="button">__MARK_ACCEPT__</button>
+    </div>
+  </div>
   <div id="fallback"><strong>__LOADING_TITLE__</strong><span>__LOADING_BODY__</span></div>
 </div>
 <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
@@ -2708,16 +2829,29 @@ const reports = __REPORTS__;
 const route = __ROUTE__;
 const routeLevel = __ROUTE_LEVEL__;
 const threeDimensional = __THREE_DIMENSIONAL__;
+const selectable = __SELECTABLE__;
 const mapEl = document.getElementById('map');
 const viewportEl = document.getElementById('viewport');
 const tilesEl = document.getElementById('tiles');
 const pointsEl = document.getElementById('points');
 const overlay = document.getElementById('overlay');
 const fallback = document.getElementById('fallback');
+const markHint = document.getElementById('markhint');
+const reportPerson = document.getElementById('reportperson');
+const dragCoords = document.getElementById('dragcoords');
+const selectedLine = document.getElementById('selectedline');
+const confirmMark = document.getElementById('confirmmark');
+const confirmCoords = document.getElementById('confirmcoords');
+if (!selectable) {
+  markHint.style.display = 'none';
+  reportPerson.style.display = 'none';
+}
 const MIN_ZOOM = 3;
 const MAX_ZOOM = 18;
 let activeCenter = null;
 let activeZoom = null;
+let map3d = null;
+let pendingReportPoint = null;
 function showFallback(title, body) {
   fallback.style.display = 'flex';
   fallback.innerHTML = `<strong>${title}</strong><span>${body}</span>`;
@@ -2745,6 +2879,7 @@ function renderThreeDimensionalMap() {
     attributionControl: false,
     canvasContextAttributes: { antialias: true },
   });
+  map3d = map;
 
   let styleReady = false;
   map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'top-right');
@@ -2999,6 +3134,7 @@ let dragCenterPx = null;
 let dragMoved = false;
 
 function onDragStart(evt) {
+  if (personDragging || evt.target === reportPerson || reportPerson.contains(evt.target)) return;
   if (evt.touches && evt.touches.length > 1) return;
   dragging = true;
   dragMoved = false;
@@ -3008,6 +3144,7 @@ function onDragStart(evt) {
 }
 
 function onDragMove(evt) {
+  if (personDragging) return;
   if (!dragging) return;
   const p = pointFromEvent(evt);
   const dx = p.x - dragStart.x;
@@ -3018,6 +3155,7 @@ function onDragMove(evt) {
 }
 
 function onDragEnd(evt) {
+  if (personDragging) return;
   if (!dragging) return;
   dragging = false;
   mapEl.classList.remove('dragging');
@@ -3052,6 +3190,110 @@ mapEl.addEventListener('dblclick', (evt) => {
 document.getElementById('zoomIn').addEventListener('click', () => renderMap(activeCenter, activeZoom + 1));
 document.getElementById('zoomOut').addEventListener('click', () => renderMap(activeCenter, activeZoom - 1));
 
+let personDragging = false;
+function reportPointFromScreen(clientX, clientY) {
+  const rect = mapEl.getBoundingClientRect();
+  const x = Math.max(12, Math.min(rect.width - 12, clientX - rect.left));
+  const y = Math.max(12, Math.min(rect.height - 12, clientY - rect.top));
+  if (threeDimensional && map3d) {
+    const point = map3d.unproject([x, y]);
+    return { lat:point.lat, lng:point.lng, x, y };
+  }
+  const centerPx = project(activeCenter[0], activeCenter[1], activeZoom);
+  const selected = unproject(
+    centerPx.x + x - rect.width / 2,
+    centerPx.y + y - rect.height / 2,
+    activeZoom
+  );
+  return { lat:selected[1], lng:selected[0], x, y };
+}
+function moveReportPerson(clientX, clientY) {
+  const point = reportPointFromScreen(clientX, clientY);
+  reportPerson.style.left = `${point.x - 21}px`;
+  reportPerson.style.top = `${point.y - 43}px`;
+  reportPerson.style.right = 'auto';
+  return point;
+}
+function drawSelectedConnector(point) {
+  if (!locationPoint || threeDimensional) {
+    selectedLine.innerHTML = '';
+    return;
+  }
+  const rect = mapEl.getBoundingClientRect();
+  const centerPx = project(activeCenter[0], activeCenter[1], activeZoom);
+  const start = screenPoint(locationPoint.lng, locationPoint.lat, centerPx, rect.width, rect.height, activeZoom);
+  selectedLine.setAttribute('viewBox', `0 0 ${rect.width} ${rect.height}`);
+  selectedLine.innerHTML = `<line x1='${start.x}' y1='${start.y}' x2='${point.x}' y2='${point.y}' stroke='rgb(245,158,11)' stroke-width='4' stroke-linecap='round' stroke-dasharray='7 7' opacity='.9'/>`;
+}
+function startPersonDrag(event) {
+  if (!selectable) return;
+  dragging = false;
+  viewportEl.style.transform = 'translate(0px, 0px)';
+  mapEl.classList.remove('dragging');
+  personDragging = true;
+  if (map3d) {
+    map3d.dragPan.disable();
+    map3d.touchZoomRotate.disable();
+    map3d.scrollZoom.disable();
+  }
+  confirmMark.style.display = 'none';
+  markHint.style.display = 'none';
+  reportPerson.classList.add('dragging');
+  reportPerson.setPointerCapture?.(event.pointerId);
+  event.stopPropagation();
+  event.preventDefault();
+}
+function movePersonDrag(event) {
+  if (!personDragging) return;
+  pendingReportPoint = moveReportPerson(event.clientX, event.clientY);
+  dragCoords.textContent = `${pendingReportPoint.lat.toFixed(5)}, ${pendingReportPoint.lng.toFixed(5)}`;
+  drawSelectedConnector(pendingReportPoint);
+  event.stopPropagation();
+  event.preventDefault();
+}
+function finishPersonDrag(event) {
+  if (!personDragging) return;
+  personDragging = false;
+  pendingReportPoint = moveReportPerson(event.clientX, event.clientY);
+  drawSelectedConnector(pendingReportPoint);
+  reportPerson.classList.remove('dragging');
+  if (map3d) {
+    map3d.dragPan.enable();
+    map3d.touchZoomRotate.enable();
+    map3d.scrollZoom.enable();
+  }
+  confirmCoords.textContent = `${pendingReportPoint.lat.toFixed(6)}, ${pendingReportPoint.lng.toFixed(6)}`;
+  confirmMark.style.display = 'block';
+  markHint.style.display = 'none';
+  event.stopPropagation();
+  event.preventDefault();
+}
+reportPerson.addEventListener('pointerdown', startPersonDrag);
+reportPerson.addEventListener('pointermove', movePersonDrag);
+reportPerson.addEventListener('pointerup', finishPersonDrag);
+reportPerson.addEventListener('pointercancel', finishPersonDrag);
+for (const eventName of ['touchstart', 'touchmove', 'touchend', 'mousedown', 'mousemove', 'mouseup']) {
+  reportPerson.addEventListener(eventName, event => {
+    event.stopPropagation();
+    if (event.cancelable) event.preventDefault();
+  }, { passive:false });
+}
+window.addEventListener('pointermove', movePersonDrag);
+window.addEventListener('pointerup', finishPersonDrag);
+document.getElementById('cancelmark').addEventListener('click', () => {
+  confirmMark.style.display = 'none';
+  markHint.style.display = 'block';
+});
+document.getElementById('acceptmark').addEventListener('click', () => {
+  if (!pendingReportPoint) return;
+  window.parent.postMessage({
+    type:'jalanaman-map-report',
+    lat:pendingReportPoint.lat,
+    lng:pendingReportPoint.lng
+  }, '*');
+  confirmMark.style.display = 'none';
+});
+
 try {
   if (threeDimensional) {
     renderThreeDimensionalMap();
@@ -3069,12 +3311,17 @@ try {
         .replace("__ROUTE__", &route_json)
         .replace("__ROUTE_LEVEL__", &route_level_json)
         .replace("__THREE_DIMENSIONAL__", three_dimensional_json)
+        .replace("__SELECTABLE__", selectable_json)
         .replace("__LOADING_TITLE__", loading_title)
         .replace("__LOADING_BODY__", loading_body)
         .replace("__MAP_FAILED_TITLE__", map_failed_title)
         .replace("__MAP_FAILED_BODY__", map_failed_body)
         .replace("__THREE_D_FAILED_TITLE__", three_d_failed_title)
         .replace("__THREE_D_FAILED_BODY__", three_d_failed_body)
+        .replace("__MARK_HINT__", mark_hint)
+        .replace("__MARK_CONFIRM__", mark_confirm)
+        .replace("__MARK_CANCEL__", mark_cancel)
+        .replace("__MARK_ACCEPT__", mark_accept)
 }
 
 fn local_route_score(waypoints: &[Waypoint], reports: &[Report]) -> RouteScoreResponse {
