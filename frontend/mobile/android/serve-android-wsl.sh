@@ -87,5 +87,15 @@ fi
 export JALANAMAN_API_BASE_URL="${JALANAMAN_API_BASE_URL:-http://127.0.0.1:8080/api}"
 
 cd "$MOBILE_DIR"
-bash "$SCRIPT_DIR/patch-generated-android.sh"
-dx serve --platform android "$@"
+bash "$SCRIPT_DIR/build-android-wsl.sh" "$@"
+
+APK_PATH="$MOBILE_DIR/target/dx/jalanaman_mobile/debug/android/app/app/build/outputs/apk/debug/app-debug.apk"
+if ! adb get-state 2>/dev/null | grep -qx "device"; then
+  echo "HP Android belum terdeteksi oleh adb. Aktifkan USB debugging lalu jalankan ulang." >&2
+  exit 1
+fi
+
+adb install --no-streaming -r "$APK_PATH"
+adb shell am force-stop com.jalanaman.JalanamanMobile
+adb shell am start -n com.jalanaman.JalanamanMobile/dev.dioxus.main.MainActivity >/dev/null
+echo "JalanAman sudah dipasang dan dibuka di HP."
