@@ -64,12 +64,45 @@ use_windows_adb_if_available() {
     mkdir -p "$ADB_WRAPPER_DIR"
     {
       printf '%s\n' '#!/usr/bin/env bash'
-      printf 'exec %q "$@"\n' "$windows_adb"
+      printf '%s\n' 'set -euo pipefail'
+      printf 'WINDOWS_ADB=%q\n' "$windows_adb"
+      printf '%s\n' 'case "${1:-}" in'
+      printf '%s\n' '  install|install-multiple|install-multi-package|push|pull) ;;'
+      printf '%s\n' '  *) exec "$WINDOWS_ADB" "$@" ;;'
+      printf '%s\n' 'esac'
+      printf '%s\n' 'converted=()'
+      printf '%s\n' 'for arg in "$@"; do'
+      printf '%s\n' '  if [ -e "$arg" ] && command -v wslpath >/dev/null 2>&1; then'
+      printf '%s\n' '    converted+=("$(wslpath -w "$arg")")'
+      printf '%s\n' '  else'
+      printf '%s\n' '    converted+=("$arg")'
+      printf '%s\n' '  fi'
+      printf '%s\n' 'done'
+      printf '%s\n' 'exec "$WINDOWS_ADB" "${converted[@]}"'
     } > "$ADB_WRAPPER_DIR/adb"
     chmod +x "$ADB_WRAPPER_DIR/adb"
     export PATH="$ADB_WRAPPER_DIR:$PATH"
     echo "Using Windows adb for Android device/emulator: $windows_adb"
   fi
+}
+
+grant_dev_permissions() {
+  local package_name="com.jalanaman.JalanamanMobile"
+  local permission
+  local op
+
+  for permission in \
+    android.permission.ACCESS_FINE_LOCATION \
+    android.permission.ACCESS_COARSE_LOCATION \
+    android.permission.POST_NOTIFICATIONS
+  do
+    adb shell pm clear-permission-flags "$package_name" "$permission" user-set user-fixed >/dev/null 2>&1 || true
+    adb shell pm grant "$package_name" "$permission" >/dev/null 2>&1 || true
+  done
+
+  for op in FINE_LOCATION COARSE_LOCATION POST_NOTIFICATION; do
+    adb shell appops set "$package_name" "$op" allow >/dev/null 2>&1 || true
+  done
 }
 
 if [ ! -d "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64" ]; then
@@ -90,12 +123,13 @@ cd "$MOBILE_DIR"
 bash "$SCRIPT_DIR/build-android-wsl.sh" "$@"
 
 APK_PATH="$MOBILE_DIR/target/dx/jalanaman_mobile/debug/android/app/app/build/outputs/apk/debug/app-debug.apk"
-if ! adb get-state 2>/dev/null | grep -qx "device"; then
+if ! adb get-state 2>/dev/null | tr -d '\r' | grep -qx "device"; then
   echo "HP Android belum terdeteksi oleh adb. Aktifkan USB debugging lalu jalankan ulang." >&2
   exit 1
 fi
 
 adb install --no-streaming -r "$APK_PATH"
+grant_dev_permissions
 adb shell am force-stop com.jalanaman.JalanamanMobile
 adb shell am start -n com.jalanaman.JalanamanMobile/dev.dioxus.main.MainActivity >/dev/null
 echo "JalanAman sudah dipasang dan dibuka di HP."

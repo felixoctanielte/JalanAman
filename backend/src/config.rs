@@ -15,6 +15,12 @@ pub struct Config {
     pub smtp_user: String,
     pub smtp_pass: String,
     pub smtp_from: String,
+    // WhatsApp Cloud API for automatic SOS WhatsApp delivery.
+    pub whatsapp_access_token: String,
+    pub whatsapp_phone_number_id: String,
+    pub whatsapp_template_name: String,
+    pub whatsapp_template_language: String,
+    pub whatsapp_graph_api_version: String,
 }
 
 impl Config {
@@ -43,6 +49,13 @@ impl Config {
             smtp_pass: env::var("SMTP_PASS").unwrap_or_default(),
             smtp_from: env::var("SMTP_FROM")
                 .unwrap_or_else(|_| "JalanAman SOS <sos@jalanaman.id>".to_string()),
+            whatsapp_access_token: env::var("WHATSAPP_ACCESS_TOKEN").unwrap_or_default(),
+            whatsapp_phone_number_id: env::var("WHATSAPP_PHONE_NUMBER_ID").unwrap_or_default(),
+            whatsapp_template_name: env::var("WHATSAPP_TEMPLATE_NAME").unwrap_or_default(),
+            whatsapp_template_language: env::var("WHATSAPP_TEMPLATE_LANGUAGE")
+                .unwrap_or_else(|_| "id".to_string()),
+            whatsapp_graph_api_version: env::var("WHATSAPP_GRAPH_API_VERSION")
+                .unwrap_or_else(|_| "v23.0".to_string()),
         })
     }
 }

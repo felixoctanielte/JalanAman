@@ -8,6 +8,7 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 
 use crate::{
+    config::Config,
     error::AppError,
     models::emergency_contact::{
         AddContactPayload, DeleteContactParams, EmergencyContact, GetContactsParams,
@@ -41,6 +42,7 @@ pub struct ContactNotifyResult {
     pub connected: bool,
     pub push_sent: bool,
     pub email_sent: bool,
+    pub whatsapp_sent: bool,
     pub error: Option<String>,
 }
 
@@ -99,6 +101,7 @@ pub async fn trigger_sos(
     for contact in &contacts {
         let mut push_sent = false;
         let mut email_sent = false;
+        let mut whatsapp_sent = false;
         let mut error_msg: Option<String> = None;
 
         // Try push notification first
@@ -118,7 +121,6 @@ pub async fn trigger_sos(
             {
                 Ok(_) => {
                     push_sent = true;
-                    notified_count += 1;
                 }
                 Err(e) => error_msg = Some(format!("push: {e}")),
             }
@@ -142,7 +144,6 @@ pub async fn trigger_sos(
                     {
                         Ok(_) => {
                             email_sent = true;
-                            notified_count += 1;
                         }
                         Err(e) => {
                             let msg = format!("email: {e}");
@@ -156,6 +157,27 @@ pub async fn trigger_sos(
             }
         }
 
+        if let Some(phone) = &contact.phone {
+            if !phone.is_empty() {
+                match send_whatsapp_alert(&state.config, phone, &body_text).await {
+                    Ok(_) => {
+                        whatsapp_sent = true;
+                    }
+                    Err(e) => {
+                        let msg = format!("whatsapp: {e}");
+                        error_msg = Some(match error_msg {
+                            Some(prev) => format!("{prev}; {msg}"),
+                            None => msg,
+                        });
+                    }
+                }
+            }
+        }
+
+        if push_sent || email_sent || whatsapp_sent {
+            notified_count += 1;
+        }
+
         results.push(ContactNotifyResult {
             name: contact.name.clone(),
             connected: contact.push_endpoint.is_some()
@@ -163,6 +185,7 @@ pub async fn trigger_sos(
                 || contact.phone.is_some(),
             push_sent,
             email_sent,
+            whatsapp_sent,
             error: error_msg,
         });
     }
@@ -234,6 +257,139 @@ async fn send_email_alert(
 
     mailer.send(email).await?;
     Ok(())
+}
+
+async fn send_whatsapp_alert(
+    config: &Config,
+    to_phone: &str,
+    body: &str,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let access_token = config.whatsapp_access_token.trim();
+    let phone_number_id = config.whatsapp_phone_number_id.trim();
+
+    if access_token.is_empty() || phone_number_id.is_empty() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "WhatsApp Cloud API belum dikonfigurasi",
+        )
+        .into());
+    }
+
+    let Some(to) = normalize_whatsapp_phone(to_phone) else {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "nomor WhatsApp tidak valid",
+        )
+        .into());
+    };
+
+    let api_version = config
+        .whatsapp_graph_api_version
+        .trim()
+        .trim_start_matches('/');
+    let endpoint = format!("https://graph.facebook.com/{api_version}/{phone_number_id}/messages");
+
+    let payload = if config.whatsapp_template_name.trim().is_empty() {
+        json!({
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": to,
+            "type": "text",
+            "text": {
+                "preview_url": true,
+                "body": body,
+            },
+        })
+    } else {
+        json!({
+            "messaging_product": "whatsapp",
+            "to": to,
+            "type": "template",
+            "template": {
+                "name": config.whatsapp_template_name.trim(),
+                "language": {
+                    "code": config.whatsapp_template_language.trim(),
+                },
+                "components": [
+                    {
+                        "type": "body",
+                        "parameters": [
+                            {
+                                "type": "text",
+                                "text": body,
+                            }
+                        ]
+                    }
+                ]
+            }
+        })
+    };
+
+    let response = reqwest::Client::new()
+        .post(endpoint)
+        .bearer_auth(access_token)
+        .json(&payload)
+        .send()
+        .await?;
+
+    let status = response.status();
+    let response_text = response.text().await.unwrap_or_default();
+    if !status.is_success() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("Cloud API {status}: {response_text}"),
+        )
+        .into());
+    }
+
+    Ok(())
+}
+
+fn normalize_whatsapp_phone(value: &str) -> Option<String> {
+    let mut digits = value
+        .chars()
+        .filter(|ch| ch.is_ascii_digit())
+        .collect::<String>();
+
+    if digits.is_empty() {
+        return None;
+    }
+
+    if digits.starts_with("00") {
+        digits = digits.trim_start_matches("00").to_string();
+    } else if digits.starts_with('0') {
+        digits = format!("62{}", digits.trim_start_matches('0'));
+    } else if digits.starts_with('8') {
+        digits = format!("62{digits}");
+    }
+
+    (digits.len() >= 8).then_some(digits)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::normalize_whatsapp_phone;
+
+    #[test]
+    fn normalizes_indonesian_whatsapp_numbers() {
+        assert_eq!(
+            normalize_whatsapp_phone("0812-3456-7890").as_deref(),
+            Some("6281234567890")
+        );
+        assert_eq!(
+            normalize_whatsapp_phone("81234567890").as_deref(),
+            Some("6281234567890")
+        );
+        assert_eq!(
+            normalize_whatsapp_phone("+62 812 3456 7890").as_deref(),
+            Some("6281234567890")
+        );
+        assert_eq!(
+            normalize_whatsapp_phone("0062 812 3456 7890").as_deref(),
+            Some("6281234567890")
+        );
+        assert_eq!(normalize_whatsapp_phone("abc").as_deref(), None);
+    }
 }
 
 // ── Add emergency contact ─────────────────────────────────────────────────────
