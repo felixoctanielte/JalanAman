@@ -3,7 +3,8 @@ name = "jalanaman-web"
 default_platform = "web"
 
 [web.app]
-title = "JalanAman"
+title = "JalanAman - Rute Teraman"
+base_path = "/"
 
 [web.watcher]
 watch_path = ["src", "assets"]
@@ -14,3 +15,12 @@ style = ["assets/tw.css"]
 script = []
 
 [web.resource.dev]
+style = []
+script = []
+
+# Proxy /api dan /health ke backend Axum (cargo run di port 8080)
+[[web.proxy]]
+backend = "http://localhost:8080/api"
+
+[[web.proxy]]
+backend = "http://localhost:8080/health"

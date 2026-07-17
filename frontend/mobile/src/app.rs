@@ -33,6 +33,12 @@ enum MobileTab {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+enum MapPresentation {
+    TwoDimensional,
+    ThreeDimensional,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum NavIconKind {
     Map,
     Route,
@@ -194,6 +200,7 @@ const MOTION_CSS: &str = r#"
 #[component]
 fn Home() -> Element {
     let mut active_tab = use_signal(|| MobileTab::Map);
+    let mut map_presentation = use_signal(|| MapPresentation::TwoDimensional);
     let mut show_splash = use_signal(|| true);
     let mut device_hash = use_signal(String::new);
     let mut location = use_signal(|| Option::<GeoPoint>::None);
@@ -247,6 +254,8 @@ fn Home() -> Element {
 
     use_effect(move || {
         spawn(async move {
+            request_app_permissions().await;
+            tokio::time::sleep(Duration::from_millis(900)).await;
             let hash = read_device_hash().await;
             device_hash.set(hash.clone());
             contacts_loading.set(true);
@@ -325,6 +334,7 @@ fn Home() -> Element {
     });
 
     let active_tab_value = *active_tab.read();
+    let map_presentation_value = *map_presentation.read();
     let location_value = *location.read();
     let report_category_value = *report_category.read();
     let report_note_value = report_note.read().clone();
@@ -338,6 +348,7 @@ fn Home() -> Element {
         &reports_value,
         directions_value.as_ref().map(|d| d.polyline.as_slice()),
         route_score_value.as_ref().map(|s| s.level.as_str()),
+        map_presentation_value == MapPresentation::ThreeDimensional,
     );
 
     rsx! {
@@ -371,6 +382,8 @@ fn Home() -> Element {
                             manual_lat: manual_lat.read().clone(),
                             manual_lng: manual_lng.read().clone(),
                             manual_error: manual_location_error.read().clone(),
+                            presentation: map_presentation_value,
+                            on_presentation: move |presentation| map_presentation.set(presentation),
                             on_report: move |_| active_tab.set(MobileTab::Report),
                             on_manual_lat: move |value| manual_lat.set(limit_text(value, 24)),
                             on_manual_lng: move |value| manual_lng.set(limit_text(value, 24)),
@@ -743,9 +756,13 @@ fn Home() -> Element {
                                 },
                             };
 
-                            start_sos_alarm().await;
-                            sos_active.set(true);
-                            sos_msg.set(Some("Alarm SOS aktif. Lokasi dan permintaan bantuan sedang dikirim ke kontak darurat.".to_string()));
+                        if let Err(err) = start_sos_alarm().await {
+                            sos_active.set(false);
+                            sos_msg.set(Some(err));
+                            return;
+                        }
+                        sos_active.set(true);
+                        sos_msg.set(Some("Alarm SOS aktif. Lokasi dan permintaan bantuan sedang dikirim ke kontak darurat.".to_string()));
 
                             let whatsapp_opened = open_whatsapp_sos(&whatsapp_contacts, point)
                                 .await
@@ -840,6 +857,8 @@ fn MapView(
     manual_lat: String,
     manual_lng: String,
     manual_error: Option<String>,
+    presentation: MapPresentation,
+    on_presentation: EventHandler<MapPresentation>,
     on_report: EventHandler<MouseEvent>,
     on_manual_lat: EventHandler<String>,
     on_manual_lng: EventHandler<String>,
@@ -867,6 +886,18 @@ fn MapView(
                     div { style: "margin-top:2px;font-size:10px;color:#64748b;font-weight:750;", "{gps_label}" }
                 }
                 div { style: MAP_PROVIDER, "Peta langsung" }
+                div { style: "position:absolute;right:12px;top:12px;z-index:3;display:flex;gap:5px;padding:4px;border:1px solid rgba(147,197,253,0.82);border-radius:8px;background:rgba(255,255,255,0.94);box-shadow:0 8px 18px rgba(30,64,175,0.14);",
+                    button {
+                        style: if presentation == MapPresentation::TwoDimensional { "height:29px;min-width:38px;border:0;border-radius:6px;background:#1d4ed8;color:#ffffff;font-size:10px;font-weight:950;" } else { "height:29px;min-width:38px;border:0;border-radius:6px;background:transparent;color:#475569;font-size:10px;font-weight:850;" },
+                        onclick: move |_| on_presentation.call(MapPresentation::TwoDimensional),
+                        "2D"
+                    }
+                    button {
+                        style: if presentation == MapPresentation::ThreeDimensional { "height:29px;min-width:38px;border:0;border-radius:6px;background:#1d4ed8;color:#ffffff;font-size:10px;font-weight:950;" } else { "height:29px;min-width:38px;border:0;border-radius:6px;background:transparent;color:#475569;font-size:10px;font-weight:850;" },
+                        onclick: move |_| on_presentation.call(MapPresentation::ThreeDimensional),
+                        "3D"
+                    }
+                }
                 button {
                     style: REPORT_FAB,
                     title: "Lapor cepat",
@@ -1570,6 +1601,10 @@ async fn read_location() -> Result<GeoPoint, String> {
                         return;
                     }
                     nativeError = native.error || '';
+                    if (/izin|permission|layanan lokasi|location service|gps/i.test(nativeError)) {
+                        resolve({ error: nativeError });
+                        return;
+                    }
                 }
             } catch (err) {
                 nativeError = err && err.message ? err.message : 'Lokasi native gagal dibaca.';
@@ -1614,15 +1649,36 @@ async fn read_location() -> Result<GeoPoint, String> {
 fn normalize_location_error(message: String) -> String {
     let lower = message.to_lowercase();
 
-    if lower.contains("only secure origins") {
-        return "Lokasi belum dapat dibaca. Aktifkan izin lokasi, lalu coba lagi.".to_string();
-    }
-
-    if lower.contains("permission") || lower.contains("denied") || lower.contains("ditolak") {
+    if lower.contains("permission")
+        || lower.contains("denied")
+        || lower.contains("ditolak")
+        || lower.contains("izin")
+    {
         return "Izin lokasi belum aktif. Izinkan lokasi untuk JalanAman, lalu coba lagi.".to_string();
     }
 
+    if lower.contains("gps")
+        || lower.contains("layanan lokasi")
+        || lower.contains("location service")
+    {
+        return "GPS belum aktif. Nyalakan Lokasi pada HP, lalu coba lagi.".to_string();
+    }
+
     "Lokasi belum tersedia. Pastikan GPS dan koneksi internet aktif, lalu coba lagi.".to_string()
+}
+
+async fn request_app_permissions() {
+    let _ = document::eval(
+        r#"
+        try {
+            if (window.JalanAmanNative && window.JalanAmanNative.requestAppPermissionsJson) {
+                window.JalanAmanNative.requestAppPermissionsJson();
+            }
+        } catch (_) {}
+        return true;
+        "#,
+    )
+    .await;
 }
 
 fn normalize_whatsapp_phone(value: &str) -> Option<String> {
@@ -1689,46 +1745,30 @@ async fn open_whatsapp_sos(contacts: &[EmergencyContact], point: GeoPoint) -> Re
     bool::deserialize(&value).map_err(|err| err.to_string())
 }
 
-async fn start_sos_alarm() {
-    let _ = document::eval(
+async fn start_sos_alarm() -> Result<(), String> {
+    let eval = document::eval(
         r#"
-            let nativeStarted = false;
-            try {
-                if (window.JalanAmanNative && window.JalanAmanNative.startSosAlarmJson) {
-                    const result = JSON.parse(window.JalanAmanNative.startSosAlarmJson());
-                    nativeStarted = !!result.ok;
-                }
-            } catch (_) {}
-
-            if (!nativeStarted) {
-                window.__jalanAmanSosAlarm = window.__jalanAmanSosAlarm || {};
-                const alarm = window.__jalanAmanSosAlarm;
-                if (alarm.timer) clearInterval(alarm.timer);
-                const ring = () => {
-                    try {
-                        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                        const now = ctx.currentTime;
-                        [880, 660, 880].forEach((freq, i) => {
-                            const osc = ctx.createOscillator();
-                            const gain = ctx.createGain();
-                            osc.type = 'square';
-                            osc.frequency.value = freq;
-                            gain.gain.value = 0.38;
-                            osc.connect(gain);
-                            gain.connect(ctx.destination);
-                            osc.start(now + i * 0.24);
-                            osc.stop(now + i * 0.24 + 0.18);
-                        });
-                    } catch (_) {}
-                    if (navigator.vibrate) navigator.vibrate([700, 180, 700, 180, 700]);
-                };
-                ring();
-                alarm.timer = setInterval(ring, 1900);
+        try {
+            if (window.JalanAmanNative && window.JalanAmanNative.startSosAlarmJson) {
+                const result = JSON.parse(window.JalanAmanNative.startSosAlarmJson());
+                return !!result.ok;
             }
-            return true;
+        } catch (_) {}
+        return false;
             "#,
-    )
-    .await;
+    );
+
+    let started = eval
+        .await
+        .ok()
+        .and_then(|value| bool::deserialize(&value).ok())
+        .unwrap_or(false);
+
+    if started {
+        Ok(())
+    } else {
+        Err("Alarm SOS belum dapat dimulai. Pastikan izin notifikasi dan suara untuk JalanAman sudah diizinkan, lalu coba lagi.".to_string())
+    }
 }
 
 async fn is_sos_alarm_active() -> bool {
@@ -1759,10 +1799,6 @@ fn stop_sos_alarm() {
                     window.JalanAmanNative.stopSosAlarmJson();
                 }
             } catch (_) {}
-            if (window.__jalanAmanSosAlarm && window.__jalanAmanSosAlarm.timer) {
-                clearInterval(window.__jalanAmanSosAlarm.timer);
-                window.__jalanAmanSosAlarm.timer = null;
-            }
             if (navigator.vibrate) navigator.vibrate(0);
             return true;
             "#,
@@ -1901,6 +1937,7 @@ fn map_srcdoc(
     reports: &[Report],
     route: Option<&[Waypoint]>,
     route_level: Option<&str>,
+    three_dimensional: bool,
 ) -> String {
     let location_json = serde_json::to_string(&location).unwrap_or_else(|_| "null".to_string());
     let reports_json = serde_json::to_string(
@@ -1920,17 +1957,21 @@ fn map_srcdoc(
         serde_json::to_string(&route.unwrap_or(&[])).unwrap_or_else(|_| "[]".to_string());
     let route_level_json = serde_json::to_string(&route_level.unwrap_or("Aman"))
         .unwrap_or_else(|_| "\"Aman\"".to_string());
+    let three_dimensional_json = if three_dimensional { "true" } else { "false" };
 
     r#"<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" />
   <style>
     html, body, #map { margin:0; width:100%; height:100%; overflow:hidden; background:#dbeafe; }
-    #map { position:relative; font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+    #map { position:relative; touch-action:none; cursor:grab; font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+    #map.dragging { cursor:grabbing; }
+    #viewport { position:absolute; inset:0; }
     #tiles, #overlay, #points { position:absolute; inset:0; }
-    #tiles img { position:absolute; width:256px; height:256px; image-rendering:auto; }
+    #tiles img { position:absolute; width:256px; height:256px; image-rendering:auto; user-select:none; -webkit-user-drag:none; pointer-events:none; }
     #overlay { pointer-events:none; z-index:3; }
     #points { z-index:4; pointer-events:none; }
     #fallback { position:absolute; inset:0; z-index:6; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:24px; box-sizing:border-box; background:#e0f2fe; color:#0f172a; font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; text-align:center; }
@@ -1940,25 +1981,44 @@ fn map_srcdoc(
     .me { position:absolute; width:18px; height:18px; margin:-9px 0 0 -9px; border-radius:50%; background:#1d4ed8; border:3px solid #fff; box-shadow:0 0 0 14px rgba(37,99,235,.17),0 10px 22px rgba(15,23,42,.26); }
     .route-end { position:absolute; width:28px; height:28px; margin:-28px 0 0 -14px; border-radius:9px 9px 9px 2px; transform:rotate(-45deg); background:#1d4ed8; border:3px solid #fff; box-shadow:0 12px 22px rgba(15,23,42,.25); display:flex; align-items:center; justify-content:center; }
     .route-end span { transform:rotate(45deg); color:#fff; font:900 12px system-ui; }
+    #zoomctl { position:absolute; right:10px; top:50%; transform:translateY(-50%); z-index:5; display:flex; flex-direction:column; border-radius:10px; overflow:hidden; box-shadow:0 10px 20px rgba(15,23,42,.22); }
+    #zoomctl button { display:block; width:34px; height:34px; border:0; background:rgba(255,255,255,0.96); color:#1d4ed8; font:900 18px/34px system-ui; padding:0; }
+    #zoomctl button:first-child { border-bottom:1px solid #dbeafe; }
+    #map.is-3d #viewport, #map.is-3d #zoomctl { display:none; }
+    .ja-me-3d { width:20px; height:20px; border-radius:50%; background:#1d4ed8; border:3px solid #fff; box-shadow:0 0 0 14px rgba(37,99,235,.17),0 10px 22px rgba(15,23,42,.26); box-sizing:border-box; }
+    .maplibregl-ctrl-group { border-radius:8px; overflow:hidden; box-shadow:0 10px 20px rgba(15,23,42,.22); }
   </style>
 </head>
 <body>
 <div id="map">
-  <div id="tiles"></div>
-  <svg id="overlay"></svg>
-  <div id="points"></div>
+  <div id="viewport">
+    <div id="tiles"></div>
+    <svg id="overlay"></svg>
+    <div id="points"></div>
+  </div>
+  <div id="zoomctl">
+    <button id="zoomIn" type="button">+</button>
+    <button id="zoomOut" type="button">&minus;</button>
+  </div>
   <div id="fallback"><strong>Memuat peta</strong><span>Menyiapkan jalan dan laporan di sekitarmu.</span></div>
 </div>
+<script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
 <script>
 const locationPoint = __LOCATION__;
 const reports = __REPORTS__;
 const route = __ROUTE__;
 const routeLevel = __ROUTE_LEVEL__;
+const threeDimensional = __THREE_DIMENSIONAL__;
 const mapEl = document.getElementById('map');
+const viewportEl = document.getElementById('viewport');
 const tilesEl = document.getElementById('tiles');
 const pointsEl = document.getElementById('points');
 const overlay = document.getElementById('overlay');
 const fallback = document.getElementById('fallback');
+const MIN_ZOOM = 3;
+const MAX_ZOOM = 18;
+let activeCenter = null;
+let activeZoom = null;
 function showFallback(title, body) {
   fallback.style.display = 'flex';
   fallback.innerHTML = `<strong>${title}</strong><span>${body}</span>`;
@@ -1967,6 +2027,90 @@ const colors = { lighting:'#f59e0b', crime:'#ef4444', accident:'#f97316', other:
 const levelColors = { Aman:'#3b82f6', Waspada:'#f59e0b', Hindari:'#ef4444' };
 const firstReport = reports[0];
 const tileSize = 256;
+
+function renderThreeDimensionalMap() {
+  mapEl.classList.add('is-3d');
+  if (!window.maplibregl) {
+    showFallback('Tampilan 3D belum termuat', 'Periksa koneksi internet atau kembali ke tampilan 2D.');
+    return;
+  }
+
+  const map = new maplibregl.Map({
+    container: 'map',
+    style: 'https://tiles.openfreemap.org/styles/liberty',
+    center: baseCenter(),
+    zoom: route.length > 1 ? 13.5 : (locationPoint || firstReport ? 16 : 11),
+    pitch: 54,
+    bearing: -24,
+    maxPitch: 70,
+    attributionControl: false,
+    canvasContextAttributes: { antialias: true },
+  });
+
+  let styleReady = false;
+  map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'top-right');
+  map.on('load', () => {
+    styleReady = true;
+    fallback.style.display = 'none';
+
+    const layers = map.getStyle().layers || [];
+    const labelLayer = layers.find(layer => layer.type === 'symbol' && layer.layout && layer.layout['text-field']);
+    map.addSource('jalanaman-buildings', { type: 'vector', url: 'https://tiles.openfreemap.org/planet' });
+    map.addLayer({
+      id: 'jalanaman-3d-buildings',
+      source: 'jalanaman-buildings',
+      'source-layer': 'building',
+      type: 'fill-extrusion',
+      minzoom: 15,
+      filter: ['!=', ['get', 'hide_3d'], true],
+      paint: {
+        'fill-extrusion-color': ['interpolate', ['linear'], ['get', 'render_height'], 0, '#cbd5e1', 80, '#60a5fa', 220, '#1d4ed8'],
+        'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 15, 0, 16, ['get', 'render_height']],
+        'fill-extrusion-base': ['case', ['>=', ['zoom'], 16], ['get', 'render_min_height'], 0],
+        'fill-extrusion-opacity': 0.88,
+      },
+    }, labelLayer && labelLayer.id);
+
+    if (route.length > 1) {
+      map.addSource('jalanaman-route', {
+        type: 'geojson',
+        data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: route.map(point => [point.lng, point.lat]) } },
+      });
+      map.addLayer({
+        id: 'jalanaman-route-line', type: 'line', source: 'jalanaman-route',
+        paint: { 'line-color': levelColors[routeLevel] || '#1d4ed8', 'line-width': 6, 'line-opacity': 0.94 },
+      });
+      const destination = route[route.length - 1];
+      new maplibregl.Marker({ color: '#1d4ed8' }).setLngLat([destination.lng, destination.lat]).addTo(map);
+      const bounds = route.reduce((value, point) => value.extend([point.lng, point.lat]), new maplibregl.LngLatBounds(route[0], route[0]));
+      map.fitBounds(bounds, { padding: { top: 64, right: 52, bottom: 92, left: 52 }, maxZoom: 16, pitch: 54, bearing: -24, duration: 0 });
+    }
+
+    if (locationPoint) {
+      const marker = document.createElement('div');
+      marker.className = 'ja-me-3d';
+      new maplibregl.Marker({ element: marker, anchor: 'center' }).setLngLat([locationPoint.lng, locationPoint.lat]).addTo(map);
+    }
+
+    if (reports.length) {
+      map.addSource('jalanaman-reports', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: reports.map(report => ({ type: 'Feature', properties: { category: report.category }, geometry: { type: 'Point', coordinates: [report.lng, report.lat] } })) },
+      });
+      map.addLayer({
+        id: 'jalanaman-report-points', type: 'circle', source: 'jalanaman-reports',
+        paint: {
+          'circle-radius': 8,
+          'circle-color': ['match', ['get', 'category'], 'lighting', '#f59e0b', 'crime', '#ef4444', 'accident', '#f97316', '#64748b'],
+          'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2,
+        },
+      });
+    }
+  });
+  setTimeout(() => {
+    if (!styleReady) showFallback('Tampilan 3D belum termuat', 'Periksa koneksi internet atau kembali ke tampilan 2D.');
+  }, 10000);
+}
 
 function baseCenter() {
   if (locationPoint) return [locationPoint.lng, locationPoint.lat];
@@ -1981,6 +2125,14 @@ function project(lng, lat, zoomLevel) {
     x: (lng + 180) / 360 * scale,
     y: (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * scale,
   };
+}
+
+function unproject(x, y, zoomLevel) {
+  const scale = tileSize * (2 ** zoomLevel);
+  const lng = x / scale * 360 - 180;
+  const n = Math.PI - (2 * Math.PI * y) / scale;
+  const lat = (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+  return [lng, lat];
 }
 
 function chooseViewport(width, height) {
@@ -2060,12 +2212,22 @@ function drawRoute(centerPx, width, height, zoomLevel) {
   }
 }
 
-function renderMap() {
+function renderMap(overrideCenter, overrideZoom) {
   const width = mapEl.clientWidth || 360;
   const height = mapEl.clientHeight || 360;
-  const viewport = chooseViewport(width, height);
-  const center = viewport.center;
-  const zoom = viewport.zoom;
+  let center;
+  let zoom;
+  if (overrideCenter && Number.isFinite(overrideZoom)) {
+    center = overrideCenter;
+    zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, overrideZoom));
+  } else {
+    const viewport = chooseViewport(width, height);
+    center = viewport.center;
+    zoom = viewport.zoom;
+  }
+  activeCenter = center;
+  activeZoom = zoom;
+  viewportEl.style.transform = 'translate(0px, 0px)';
   const worldTiles = 2 ** zoom;
   const centerPx = project(center[0], center[1], zoom);
   const startX = Math.floor((centerPx.x - width / 2) / tileSize);
@@ -2122,10 +2284,83 @@ function renderMap() {
   }, 6000);
 }
 
+function pointFromEvent(evt) {
+  if (evt.changedTouches && evt.changedTouches.length) {
+    return { x: evt.changedTouches[0].clientX, y: evt.changedTouches[0].clientY };
+  }
+  if (evt.touches && evt.touches.length) {
+    return { x: evt.touches[0].clientX, y: evt.touches[0].clientY };
+  }
+  return { x: evt.clientX, y: evt.clientY };
+}
+
+let dragging = false;
+let dragStart = null;
+let dragCenterPx = null;
+let dragMoved = false;
+
+function onDragStart(evt) {
+  if (evt.touches && evt.touches.length > 1) return;
+  dragging = true;
+  dragMoved = false;
+  dragStart = pointFromEvent(evt);
+  dragCenterPx = project(activeCenter[0], activeCenter[1], activeZoom);
+  mapEl.classList.add('dragging');
+}
+
+function onDragMove(evt) {
+  if (!dragging) return;
+  const p = pointFromEvent(evt);
+  const dx = p.x - dragStart.x;
+  const dy = p.y - dragStart.y;
+  if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragMoved = true;
+  viewportEl.style.transform = `translate(${dx}px, ${dy}px)`;
+  if (evt.cancelable) evt.preventDefault();
+}
+
+function onDragEnd(evt) {
+  if (!dragging) return;
+  dragging = false;
+  mapEl.classList.remove('dragging');
+  if (!dragMoved) {
+    viewportEl.style.transform = 'translate(0px, 0px)';
+    return;
+  }
+  const p = pointFromEvent(evt);
+  const dx = p.x - dragStart.x;
+  const dy = p.y - dragStart.y;
+  const newCenter = unproject(dragCenterPx.x - dx, dragCenterPx.y - dy, activeZoom);
+  renderMap(newCenter, activeZoom);
+}
+
+mapEl.addEventListener('mousedown', onDragStart);
+window.addEventListener('mousemove', onDragMove);
+window.addEventListener('mouseup', onDragEnd);
+mapEl.addEventListener('touchstart', onDragStart, { passive: true });
+mapEl.addEventListener('touchmove', onDragMove, { passive: false });
+mapEl.addEventListener('touchend', onDragEnd);
+mapEl.addEventListener('touchcancel', onDragEnd);
+mapEl.addEventListener('wheel', (evt) => {
+  evt.preventDefault();
+  const delta = evt.deltaY < 0 ? 1 : -1;
+  renderMap(activeCenter, activeZoom + delta);
+}, { passive: false });
+mapEl.addEventListener('dblclick', (evt) => {
+  evt.preventDefault();
+  renderMap(activeCenter, activeZoom + 1);
+});
+
+document.getElementById('zoomIn').addEventListener('click', () => renderMap(activeCenter, activeZoom + 1));
+document.getElementById('zoomOut').addEventListener('click', () => renderMap(activeCenter, activeZoom - 1));
+
 try {
-  renderMap();
+  if (threeDimensional) {
+    renderThreeDimensionalMap();
+  } else {
+    renderMap();
+  }
 } catch (_) {
-  showFallback('Peta belum termuat', 'Cek koneksi internet lalu coba refresh peta.');
+  showFallback(threeDimensional ? 'Tampilan 3D belum termuat' : 'Peta belum termuat', threeDimensional ? 'Periksa koneksi internet atau kembali ke tampilan 2D.' : 'Cek koneksi internet lalu coba refresh peta.');
 }
 </script>
 </body>
@@ -2134,6 +2369,7 @@ try {
         .replace("__REPORTS__", &reports_json)
         .replace("__ROUTE__", &route_json)
         .replace("__ROUTE_LEVEL__", &route_level_json)
+        .replace("__THREE_DIMENSIONAL__", three_dimensional_json)
 }
 
 fn local_route_score(waypoints: &[Waypoint], reports: &[Report]) -> RouteScoreResponse {

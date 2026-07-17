@@ -10,3 +10,5 @@ dist/
 sqlx-data.json
 # Tailwind generated output (rebuilt by npm run tailwind:build)
 frontend/web/assets/tw.css
+.cache/
+.claude/

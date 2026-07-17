@@ -7,8 +7,11 @@ ANDROID_APP_DIR="$MOBILE_DIR/target/dx/jalanaman_mobile/debug/android/app"
 MANIFEST="$ANDROID_APP_DIR/app/src/main/AndroidManifest.xml"
 WEB_VIEW="$ANDROID_APP_DIR/app/src/main/kotlin/dev/dioxus/main/RustWebView.kt"
 WEB_CHROME_CLIENT="$ANDROID_APP_DIR/app/src/main/kotlin/dev/dioxus/main/RustWebChromeClient.kt"
+WRY_ACTIVITY="$ANDROID_APP_DIR/app/src/main/kotlin/dev/dioxus/main/WryActivity.kt"
 LOCATION_BRIDGE="$ANDROID_APP_DIR/app/src/main/kotlin/dev/dioxus/main/JalanAmanLocationBridge.kt"
 SOS_SERVICE="$ANDROID_APP_DIR/app/src/main/kotlin/dev/dioxus/main/SosAlarmService.kt"
+COLORS_XML="$ANDROID_APP_DIR/app/src/main/res/values/colors.xml"
+STYLES_XML="$ANDROID_APP_DIR/app/src/main/res/values/styles.xml"
 
 if [ ! -f "$MANIFEST" ]; then
   echo "Android generated manifest belum ada, skip patch permission."
@@ -81,6 +84,7 @@ import android.location.LocationManager
 import android.net.Uri
 import android.os.Build
 import android.os.CancellationSignal
+import android.os.Looper
 import android.webkit.JavascriptInterface
 import org.json.JSONObject
 import java.util.concurrent.CountDownLatch
@@ -90,6 +94,16 @@ import java.util.concurrent.atomic.AtomicReference
 
 class JalanAmanLocationBridge(private val context: Context) {
   @JavascriptInterface
+  fun requestAppPermissionsJson(): String {
+    return try {
+      requestRuntimePermissionsIfPossible()
+      JSONObject().put("ok", true).toString()
+    } catch (ex: Exception) {
+      JSONObject().put("ok", false).put("error", ex.message ?: "Izin aplikasi belum dapat diminta.").toString()
+    }
+  }
+
+  @JavascriptInterface
   fun getCurrentLocationJson(): String {
     return try {
       requestRuntimePermissionsIfPossible()
@@ -98,6 +112,9 @@ class JalanAmanLocationBridge(private val context: Context) {
       }
 
       val manager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+      if (!isLocationServiceEnabled(manager)) {
+        return JSONObject().put("error", "Layanan lokasi atau GPS belum aktif di HP.").toString()
+      }
       val location = readCurrentLocation(manager) ?: readLastKnownLocation(manager)
       if (location == null) {
         JSONObject().put("error", "Lokasi native belum tersedia.").toString()
@@ -177,23 +194,28 @@ class JalanAmanLocationBridge(private val context: Context) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
     val activity = context as? Activity ?: return
 
-    val permissions = mutableListOf<String>()
-    if (!hasLocationPermission()) {
-      permissions.add(Manifest.permission.ACCESS_FINE_LOCATION)
-      permissions.add(Manifest.permission.ACCESS_COARSE_LOCATION)
-    }
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-      context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-    ) {
-      permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+    val request = Runnable {
+      val permissions = mutableListOf<String>()
+      if (!hasLocationPermission()) {
+        permissions.add(Manifest.permission.ACCESS_FINE_LOCATION)
+        permissions.add(Manifest.permission.ACCESS_COARSE_LOCATION)
+      }
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+        context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+      ) {
+        permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+      }
+
+      if (permissions.isNotEmpty()) {
+        activity.requestPermissions(permissions.toTypedArray(), 6201)
+      }
     }
 
-    if (permissions.isEmpty()) return
-
-    activity.requestPermissions(
-      permissions.toTypedArray(),
-      6201
-    )
+    if (Looper.myLooper() == Looper.getMainLooper()) {
+      request.run()
+    } else {
+      activity.runOnUiThread(request)
+    }
   }
 
   @SuppressLint("MissingPermission")
@@ -206,7 +228,7 @@ class JalanAmanLocationBridge(private val context: Context) {
   private fun readCurrentLocation(manager: LocationManager): Location? {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
 
-    val providers = locationProviders(manager).take(2)
+    val providers = locationProviders(manager).take(3)
     if (providers.isEmpty()) return null
 
     val signal = CancellationSignal()
@@ -241,6 +263,16 @@ class JalanAmanLocationBridge(private val context: Context) {
     return providers.distinct().filter { provider ->
       runCatching { manager.isProviderEnabled(provider) }.getOrDefault(false)
     }
+  }
+
+  private fun isLocationServiceEnabled(manager: LocationManager): Boolean {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+      return manager.isLocationEnabled
+    }
+    return runCatching {
+      manager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+        manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+    }.getOrDefault(false)
   }
 }
 KOTLIN
@@ -385,4 +417,51 @@ if [ -f "$WEB_VIEW" ] && ! grep -q "JalanAmanNative" "$WEB_VIEW"; then
   sed -i '/settings\.javaScriptCanOpenWindowsAutomatically = true/a\        addJavascriptInterface(JalanAmanLocationBridge(context), "JalanAmanNative")' "$WEB_VIEW"
 fi
 
-echo "Android generated project patched: network, location, notification, vibration permissions and WhatsApp bridge ready."
+# Dioxus 0.6 initializes its Android app trampoline once per process. Keep the existing task alive
+# when Android Back is pressed so reopening JalanAman cannot create a second root in that process.
+if [ -f "$WRY_ACTIVITY" ] && ! grep -q "moveTaskToBack(true)" "$WRY_ACTIVITY"; then
+  sed -i '/return super\.onKeyDown(keyCode, event)/i\        if (keyCode == KeyEvent.KEYCODE_BACK) {\
+            moveTaskToBack(true)\
+            return true\
+        }' "$WRY_ACTIVITY"
+fi
+
+# Let the keyboard resize the WebView instead of covering form fields (report note, contact inputs).
+if [ -f "$MANIFEST" ] && ! grep -q "windowSoftInputMode" "$MANIFEST"; then
+  sed -i 's/android:name="dev\.dioxus\.main\.MainActivity">/android:name="dev.dioxus.main.MainActivity" android:windowSoftInputMode="adjustResize">/' "$MANIFEST"
+fi
+
+if [ -f "$MANIFEST" ] && ! grep -q 'android:launchMode="singleTask"' "$MANIFEST"; then
+  sed -i 's/android:name="dev\.dioxus\.main\.MainActivity"/android:name="dev.dioxus.main.MainActivity" android:launchMode="singleTask"/' "$MANIFEST"
+fi
+
+# Brand the Android chrome: default Dioxus template ships a generic teal/pink Material theme,
+# so the system status bar clashes with JalanAman's blue UI and the app reads as unfinished/boxed
+# instead of full-bleed. AppCompat tints android:statusBarColor from colorPrimaryDark automatically.
+if [ -f "$COLORS_XML" ]; then
+  cat > "$COLORS_XML" <<'XML'
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#1D4ED8</color>
+    <color name="colorPrimaryDark">#0F3D91</color>
+    <color name="colorAccent">#2563EB</color>
+</resources>
+XML
+fi
+
+if [ -f "$STYLES_XML" ]; then
+  cat > "$STYLES_XML" <<'XML'
+<resources>
+
+    <!-- JalanAman theme: blue brand colors so the system status bar matches the in-app chrome. -->
+    <style name="AppTheme" parent="@style/Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="android:windowBackground">@color/colorPrimaryDark</item>
+    </style>
+</resources>
+XML
+fi
+
+echo "Android generated project patched: network, location, notification, vibration permissions, WhatsApp bridge, keyboard resize, and JalanAman brand theme ready."
