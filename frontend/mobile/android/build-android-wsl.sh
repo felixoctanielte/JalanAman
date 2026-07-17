@@ -23,9 +23,16 @@ fi
 
 cd "$MOBILE_DIR"
 dx build --platform android "$@"
-bash "$SCRIPT_DIR/patch-generated-android.sh"
 
-ANDROID_APP_DIR="$MOBILE_DIR/target/dx/jalanaman_mobile/debug/android/app"
+DX_PROFILE="debug"
+for arg in "$@"; do
+  if [ "$arg" = "--release" ] || [ "$arg" = "-r" ]; then
+    DX_PROFILE="release"
+  fi
+done
+JALANAMAN_DX_PROFILE="$DX_PROFILE" bash "$SCRIPT_DIR/patch-generated-android.sh"
+
+ANDROID_APP_DIR="$MOBILE_DIR/target/dx/jalanaman_mobile/$DX_PROFILE/android/app"
 if [ -x "$ANDROID_APP_DIR/gradlew" ]; then
   (cd "$ANDROID_APP_DIR" && ./gradlew assembleDebug)
 fi

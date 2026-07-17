@@ -3,7 +3,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MOBILE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-ANDROID_APP_DIR="$MOBILE_DIR/target/dx/jalanaman_mobile/debug/android/app"
+# Dioxus menaruh project Android di direktori profile yang dipakai (`debug`
+# atau `release`). Dengan default debug perilaku dev tetap sama, sementara
+# build release juga menerima manifest dan bridge lokasi yang sama.
+DX_PROFILE="${JALANAMAN_DX_PROFILE:-debug}"
+ANDROID_APP_DIR="${JALANAMAN_ANDROID_APP_DIR:-$MOBILE_DIR/target/dx/jalanaman_mobile/$DX_PROFILE/android/app}"
 MANIFEST="$ANDROID_APP_DIR/app/src/main/AndroidManifest.xml"
 WEB_VIEW="$ANDROID_APP_DIR/app/src/main/kotlin/dev/dioxus/main/RustWebView.kt"
 WEB_CHROME_CLIENT="$ANDROID_APP_DIR/app/src/main/kotlin/dev/dioxus/main/RustWebChromeClient.kt"
