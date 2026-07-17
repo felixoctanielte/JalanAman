@@ -12,6 +12,8 @@ RUN mkdir src && echo 'fn main() {}' > src/main.rs && cargo build --release && r
 COPY src ./src
 COPY migrations ./migrations
 
+COPY assets ./assets
+
 # 4. Sentuh file agar Cargo tahu ada perubahan kode, lalu compile aplikasi asli
 RUN touch src/main.rs && cargo build --release --bin jalan_aman_backend
 

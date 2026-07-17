@@ -7,7 +7,7 @@ title = "JalanAman - Rute Teraman"
 base_path = "/"
 
 [web.watcher]
-watch_path = ["src", "assets"]
+watch_path = ["src", "assets", "index.html"]
 reload_html = true
 
 [web.resource]

@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use crate::{
     error::AppError,
-    models::report::{CreateReportPayload, GetReportsParams, Report, HeatmapPoint},
+    models::report::{CreateReportPayload, GetReportsParams, HeatmapPoint, Report},
     AppState,
 };
 
@@ -151,7 +151,11 @@ pub async fn downvote_report(
 
 pub async fn get_heatmap(
     State(state): State<AppState>,
+    Query(params): Query<GetReportsParams>,
 ) -> Result<Json<Vec<HeatmapPoint>>, AppError> {
+    // Radius bersifat opsional. Tanpa radius, dashboard memuat seluruh laporan
+    // aktif agar heatmap tidak dibatasi jarak maksimum dari lokasi pengguna.
+    let radius = params.radius.unwrap_or(f64::MAX);
     let points = sqlx::query_as::<_, HeatmapPoint>(
         r#"
         SELECT 
@@ -161,10 +165,14 @@ pub async fn get_heatmap(
             category::text AS category,
             COALESCE(note, '') AS description -- 👈 Ambil note sebagai description & handle NULL
         FROM reports
-        WHERE status = 'active'
+        WHERE earth_distance(ll_to_earth(lat, lng), ll_to_earth($1, $2)) <= $3
+          AND status = 'active'
           AND created_at > NOW() - INTERVAL '30 days'
         "#,
     )
+    .bind(params.lat)
+    .bind(params.lng)
+    .bind(radius)
     .fetch_all(&state.db)
     .await?;
 

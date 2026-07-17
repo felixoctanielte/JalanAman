@@ -1,132 +1,159 @@
 # JalanAman
 
-**Garuda Hacks 7.0 — Track: Safety & Resilience**
+**Garuda Hacks 7.0 - Track: Safety & Resilience**
 
-> "Tahu mana yang aman sebelum melangkah"
+> Know which route is safer before you move.
 
-Aplikasi mobile PWA + dashboard web berbasis laporan komunitas (*crowd-sourced*) yang membantu pejalan kaki dan pengguna transportasi umum di Indonesia mengetahui tingkat keamanan suatu rute, lengkap dengan tombol SOS satu-tap yang membunyikan alarm keras di device dan mengirim Web Push + email ke kontak darurat.
+JalanAman is a mobile-first safety app and web dashboard powered by crowd-sourced community reports. It helps pedestrians and public transport users in Indonesia understand route safety, report nearby risks quickly, and trigger a one-tap SOS flow with a loud local alarm plus emergency notifications through push and email.
 
 ---
 
-## Fitur MVP
+## MVP Features
 
-| Fitur | Deskripsi |
+| Feature | Description |
 |---|---|
-| 🗺 **Peta Laporan** | Pin report komunitas (pencahayaan buruk / rawan begal / kecelakaan) dalam radius 500m — Leaflet + OpenStreetMap, gratis |
-| ⚠️ **Lapor Cepat** | 1 tap → pilih kategori → kirim dengan geolokasi otomatis, tanpa akun |
-| 📊 **Skor Rute** | Input tujuan → routing via OSRM (gratis) → overlay skor **Aman / Waspada / Hindari** |
-| 🆘 **Tombol SOS** | Alarm suara keras + vibrate lokal (instan) + Web Push + email ke kontak darurat |
-| 🏘 **Dashboard** | Heatmap laporan per wilayah untuk RT/RW, satpam kampus, kepolisian |
+| Report Map | Community report pins for poor lighting, crime-prone areas, and accidents near the user. The web app uses Leaflet + OpenStreetMap. |
+| Quick Report | One tap report flow: choose a category, attach current geolocation, and submit without an account. |
+| Route Score | Enter a destination, calculate a route through OSRM, then display a safety level: Safe, Caution, or Avoid. |
+| SOS Button | Loud local alarm, vibration, emergency contact notification, WhatsApp fallback, and SOS email delivery. |
+| Dashboard | Area-based report visibility for neighborhood admins, campus security, and local safety teams. |
 
-### Batasan yang diketahui (disclosed)
+### Known Limitations
 
-- Push notification ke kontak darurat adalah **best-effort**: tunduk pada setting notifikasi perangkat penerima dan status koneksi. Bukan *critical alert* yang bypass DND.
-- Kontak darurat harus membuka link undangan dan mengizinkan notifikasi **sebelum** SOS diperlukan.
-- Alarm suara **lokal** di device pengirim selalu bunyi — tidak butuh koneksi internet.
-- Alarm berbasis email memerlukan rule Tasker/MacroDroid di HP kontak. Gunakan pemicu notifikasi Gmail yang memuat `[JALANAMAN-SOS]`, lalu atur aksi memainkan alarm, menyalakan layar, dan mengulang getaran. Isi email juga memiliki marker `JALANAMAN_SOS_TRIGGER=1` agar mudah difilter.
+- Emergency push notification is best-effort and depends on the receiver's device settings, notification permissions, and network state. It is not a critical alert that bypasses Do Not Disturb.
+- Emergency contacts must open the invite link and allow notifications before SOS is needed.
+- The sender device always plays the local alarm without requiring an internet connection.
+- Email-based alarms require an automation rule on the contact's phone, such as Tasker or MacroDroid. Use a Gmail notification trigger that contains `[JALANAMAN-SOS]`, then configure the phone to play an alarm, wake the screen, and repeat vibration. The email body also contains `JALANAMAN_SOS_TRIGGER=1` for easier filtering.
 
 ---
 
 ## Tech Stack
 
-| Layer | Teknologi |
+| Layer | Technology |
 |---|---|
-| Backend | Rust · Axum 0.7 · Tokio |
-| Frontend Web | Dioxus 0.6 (WASM PWA) · `dx serve` |
-| Frontend Mobile | Dioxus 0.6 · `dx serve --platform android/ios` |
-| CSS | Tailwind CSS v3 (build via npm) |
-| Database | PostgreSQL 16 · `earthdistance` + `cube` extensions |
+| Backend | Rust, Axum 0.7, Tokio |
+| Web Frontend | Dioxus 0.6 WASM PWA, `dx serve` |
+| Mobile Frontend | Dioxus 0.6 Android/iOS |
+| CSS | Tailwind CSS v3, built through npm |
+| Database | PostgreSQL 16 with `earthdistance` and `cube` extensions |
 | Cache | Redis 7 |
-| Peta & Routing | Leaflet 1.9.4 · OpenStreetMap · OSRM · Nominatim — **gratis, tanpa API key** |
-| Push | Web Push / VAPID (`web-push` crate) |
-| Email SOS | SMTP via `lettre` (Gmail App Password) |
-| Container | Docker & Docker Compose |
-| Reverse proxy | nginx |
+| Map and Routing | Leaflet 1.9.4, OpenStreetMap, OSRM, Nominatim |
+| Push | Web Push / VAPID through the `web-push` crate |
+| SOS Email | SMTP through `lettre`, tested with Gmail App Password |
+| Container | Docker and Docker Compose |
+| Reverse Proxy | nginx |
+
+No paid map API key is required for the default map, routing, and geocoding stack.
 
 ---
 
-## Prasyarat
+## Prerequisites
 
 ```bash
 # Rust toolchain
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 rustup target add wasm32-unknown-unknown
 
-# Dioxus CLI 0.6.x sesuai lockfile project
+# Dioxus CLI 0.6.x, matching this project
 cargo install dioxus-cli --version 0.6.3 --locked
 
-# sqlx CLI (migrasi database)
+# sqlx CLI for database migrations
 cargo install sqlx-cli --no-default-features --features native-tls,postgres
 
-# cargo-watch (hot reload backend)
+# cargo-watch for backend hot reload
 cargo install cargo-watch
 
-# Node.js >= 18 (untuk build Tailwind CSS)
+# Node.js >= 18 for Tailwind builds
 node --version
 cd frontend/web && npm ci && cd ../..
 
-# Docker & Docker Compose
+# Docker and Docker Compose
 docker --version
 ```
 
+For Android development in WSL, see [frontend/mobile/android/README.md](frontend/mobile/android/README.md).
+
 ---
 
-## Setup & Menjalankan
+## Setup
 
-### 1. Clone & environment
+### 1. Clone and configure environment
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/JalanAman
 cd JalanAman
 cp .env.example .env
-# Edit .env: isi VAPID keys, SMTP credentials
 ```
+
+Edit `.env` and fill in the VAPID keys and SMTP credentials.
 
 ### 2. Generate VAPID keys
 
 ```bash
 ./scripts/generate_vapid_keys.sh
-# Salin VAPID_PUBLIC_KEY dan VAPID_PRIVATE_KEY_PEM ke .env
 ```
 
-### 3. Jalankan infrastruktur (DB + Redis)
+Copy `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY_PEM` into `.env`.
+
+### 3. Start local infrastructure
 
 ```bash
-make dev-infra         # docker compose up postgres redis -d
+make dev-infra
 cd backend && sqlx migrate run
 ```
 
-### 4. Dev mode (3 terminal)
+### 4. Run web development mode
+
+Use two terminals:
 
 ```bash
-# Terminal 1 – backend (hot reload)
-make dev-backend       # cargo watch -x run di port 8080
+# Terminal 1 - backend with hot reload
+make dev-backend
 
-# Terminal 2 – frontend web
-make dev-web           # build Tailwind + dx serve, lalu buka Chrome
-
-# Terminal 3 – mobile Android WSL (opsional)
-make dev-android       # wrapper android/serve-android-wsl.sh
+# Terminal 2 - web frontend
+make dev-web
 ```
 
-Kalau jalan manual, masuk ke folder targetnya:
+The backend runs on `http://127.0.0.1:8080`. The web wrapper builds Tailwind CSS and starts Dioxus.
+
+### 5. Run Android development mode
+
+For the best physical-device workflow, connect the phone with USB debugging enabled, then run:
 
 ```bash
-cd frontend/web
-bash serve-web-wsl.sh  # buka Chrome di http://localhost:8080
-
-cd ../mobile
-dx serve               # shell wrapper menambahkan --platform android
+make dev-android-auto
 ```
 
-### 5. Full Docker stack
+This command will:
+
+- start or reuse the backend on `http://127.0.0.1:8080`
+- start PostgreSQL and Redis through Docker when needed
+- apply `adb reverse tcp:8080 tcp:8080`
+- build, install, and open the Android APK on the phone
+- watch `frontend/mobile` and `frontend/shared`
+- rebuild and reinstall the APK automatically whenever you save a watched file
+
+For a single Android update without the watcher:
+
+```bash
+JALANAMAN_ONCE=1 make dev-android-auto
+```
+
+The older one-shot Android wrapper is still available:
+
+```bash
+make dev-android
+```
+
+### 6. Run the full Docker stack
 
 ```bash
 docker compose up -d --build
-# Buka http://localhost
 ```
 
-### 6. Seed demo data
+Open `http://localhost`.
+
+### 7. Seed demo data
 
 ```bash
 make seed
@@ -136,125 +163,119 @@ make seed
 
 ## Environment Variables
 
-| Variabel | Keterangan |
+| Variable | Description |
 |---|---|
-| `DATABASE_URL` | Connection string PostgreSQL |
-| `REDIS_URL` | Connection string Redis |
-| `PORT` | Port backend (default `8080`) |
-| `VAPID_PUBLIC_KEY` | Base64url public key untuk Web Push |
-| `VAPID_PRIVATE_KEY_PEM` | PEM private key untuk Web Push |
-| `SMTP_HOST` / `SMTP_PORT` | Server SMTP (default: `smtp.gmail.com:587`) |
-| `SMTP_USER` / `SMTP_PASS` | Kredensial SMTP (Gmail: gunakan App Password) |
-| `SMTP_FROM` | Alamat pengirim email SOS |
+| `DATABASE_URL` | PostgreSQL connection string |
+| `REDIS_URL` | Redis connection string |
+| `PORT` | Backend port, defaults to `8080` |
+| `VAPID_PUBLIC_KEY` | Base64url public key for Web Push |
+| `VAPID_PRIVATE_KEY_PEM` | PEM private key for Web Push |
+| `GOOGLE_MAPS_API_KEY` | Optional Google Maps key for features that need it |
+| `FRONTEND_URL` | Public frontend URL used by invite and notification flows |
+| `SMTP_HOST` / `SMTP_PORT` | SMTP server, defaults to `smtp.gmail.com:587` |
+| `SMTP_USER` / `SMTP_PASS` | SMTP credentials. For Gmail, use an App Password. |
+| `SMTP_FROM` | Sender identity for SOS emails |
 
-> **Tidak perlu API key peta** — peta, routing, dan geocoding menggunakan Leaflet + OpenStreetMap + OSRM (semua gratis).
+When values contain spaces or angle brackets, wrap them in quotes inside `.env`, for example:
+
+```bash
+SMTP_FROM="JalanAman SOS <jalanaman@example.com>"
+```
 
 ---
 
 ## REST API
 
-```
+```text
 GET  /health
 
-# Laporan keamanan
-POST /api/reports                       Buat laporan baru
-GET  /api/reports?lat=&lng=&radius=     Laporan dalam radius (meter)
+# Safety reports
+POST /api/reports
+GET  /api/reports?lat=&lng=&radius=
 POST /api/reports/:id/upvote
 POST /api/reports/:id/downvote
 
-# Skor rute
-POST /api/route-score                   Hitung skor keamanan rute
-     body: { waypoints: [{lat, lng}] }
-     → { level: "Aman"|"Waspada"|"Hindari", score: f64, ... }
+# Directions and route scoring
+GET  /api/directions
+GET  /api/places
+POST /api/route-score
 
-# SOS & kontak darurat
-POST   /api/sos/trigger                 Kirim SOS (alarm + push + email)
-GET    /api/sos/contacts?device_hash=   Daftar kontak darurat
-POST   /api/sos/contacts                Tambah kontak darurat
-DELETE /api/sos/contacts/:id            Hapus kontak darurat
-GET    /api/sos/invite/:token           Info undangan (publik)
-POST   /api/sos/subscribe               Daftarkan push subscription kontak
+# SOS and emergency contacts
+POST   /api/sos/trigger
+GET    /api/sos/contacts?device_hash=
+POST   /api/sos/contacts
+DELETE /api/sos/contacts/:id
+GET    /api/sos/invite/:token
+POST   /api/sos/subscribe
+
+# Public frontend config
+GET /api/config
 ```
 
 ---
 
-## Arsitektur Anti-Spam / Anti-Abuse
+## Anti-Abuse Design
 
-- **Cooldown laporan**: 1 laporan per device per 10 menit di lokasi yang sama (Redis TTL)
-- **Auto-hide**: laporan dengan ≥3 downvote otomatis disembunyikan
-- **Decay laporan**: bobot laporan menurun linier selama 30 hari
-- **Rate limit SOS**: maks 1 trigger per menit per device (Redis TTL)
-- **Privasi**: tidak menyimpan nama asli, hanya `device_hash`; lokasi SOS hanya dikirim ke kontak yang didaftarkan sendiri
+- Report cooldown: one report per device in the same location every 10 minutes, backed by Redis TTL.
+- Auto-hide: reports with at least three downvotes are hidden automatically.
+- Report decay: report weight decreases linearly over 30 days.
+- SOS rate limit: one SOS trigger per minute per device, backed by Redis TTL.
+- Privacy: the backend stores a device hash rather than a real user name. SOS location is sent only to contacts registered by the user.
 
 ---
 
-## Struktur Proyek
+## Project Structure
 
-```
+```text
 JalanAman/
-├── backend/                   Rust/Axum REST API
-│   ├── src/
-│   │   ├── main.rs
-│   │   ├── config.rs
-│   │   ├── routes.rs
-│   │   ├── models/            report.rs · emergency_contact.rs
-│   │   └── handlers/          reports · route_score · sos · health
-│   └── migrations/
-│       └── 001_init.sql
-├── frontend/
-│   ├── shared/                Types & komponen bersama (Dioxus)
-│   │   └── src/
-│   │       ├── components/    report_form · route_score · sos_button
-│   │       └── utils/types.rs
-│   ├── web/                   PWA Web (dx serve → WASM)
-│   │   ├── src/
-│   │   │   ├── main.rs        Entry point dx
-│   │   │   ├── app.rs         Router & routes
-│   │   │   ├── pages/         home · dashboard · contacts · invite
-│   │   │   ├── components/    map
-│   │   │   ├── hooks/         use_geolocation
-│   │   │   ├── services/      api · push
-│   │   │   └── utils/         js · device
-│   │   ├── public/
-│   │   │   ├── sw.js          Service Worker (PWA + push)
-│   │   │   └── manifest.json
-│   │   ├── assets/
-│   │   │   └── tailwind.css   Input Tailwind (→ tw.css saat build)
-│   │   ├── index.html         Shell HTML + Leaflet CDN + JS helpers
-│   │   └── Dioxus.toml
-│   └── mobile/                Android/iOS (dx serve --platform android/ios)
-│       ├── src/main.rs
-│       ├── android/           Script SDK/NDK + wrapper Android WSL
-│       └── Dioxus.toml
-├── nginx/nginx.conf
-├── docker-compose.yml
-├── Makefile
-└── scripts/
-    ├── generate_vapid_keys.sh
-    └── seed_demo.sql
+|-- backend/                   Rust/Axum REST API
+|   |-- src/
+|   |   |-- main.rs
+|   |   |-- config.rs
+|   |   |-- routes.rs
+|   |   |-- models/
+|   |   `-- handlers/
+|   `-- migrations/
+|-- frontend/
+|   |-- shared/                Shared Dioxus types and components
+|   |-- web/                   Dioxus WASM PWA
+|   `-- mobile/                Dioxus Android/iOS app
+|       |-- src/
+|       |-- assets/
+|       |-- android/
+|       `-- Dioxus.toml
+|-- nginx/
+|-- scripts/
+|   |-- dev-android-auto.sh
+|   |-- generate_vapid_keys.sh
+|   `-- seed_demo.sql
+|-- docker-compose.yml
+|-- Makefile
+`-- README.md
 ```
 
 ---
 
-## AI Usage Disclosure (Garuda Hacks)
+## AI Usage Disclosure
 
-Sesuai aturan Garuda Hacks 7.0, berikut bagian yang dibantu AI (Claude):
+Parts of this project were assisted by AI during development:
 
-- **Scaffold infrastruktur awal** (struktur proyek, Cargo.toml, docker-compose.yml, migration SQL)
-- **Template handler Axum** (boilerplate CRUD dan error handling)
-- **Template komponen Dioxus** (struktur RSX, prop types)
-- **Service Worker dan JS helper** (Web Push, Web Audio API, Geolocation, Leaflet integration)
+- initial infrastructure scaffolding
+- Axum handler boilerplate
+- Dioxus component templates
+- Service Worker and browser helper integration
+- development workflow scripting and documentation cleanup
 
-Semua logika bisnis utama (algoritma skor rute, mekanisme anti-spam, alur undangan kontak darurat) dirancang oleh tim dan diimplementasikan/diverifikasi sendiri.
-
----
-
-## Tim
-
-<!-- Isi nama anggota tim di sini -->
+The main product behavior, route-safety logic, anti-abuse rules, emergency contact flow, and final verification are owned and reviewed by the team.
 
 ---
 
-## Lisensi
+## Team
 
-MIT License — lihat [LICENSE](LICENSE)
+Add team member names here.
+
+---
+
+## License
+
+MIT License.

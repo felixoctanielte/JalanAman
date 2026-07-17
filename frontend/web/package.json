@@ -4,12 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-<<<<<<< HEAD
-    "test": "echo \"Error: no test specified\" && exit 1"
-=======
     "tailwind:build": "tailwindcss -c tailwind.config.js -i ./assets/tailwind.css -o ./assets/tw.css",
     "tailwind:watch": "tailwindcss -c tailwind.config.js -i ./assets/tailwind.css -o ./assets/tw.css --watch"
->>>>>>> origin/develop-mobile-and-backend
   },
   "keywords": [],
   "author": "",

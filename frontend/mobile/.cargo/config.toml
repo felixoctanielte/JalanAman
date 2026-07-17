@@ -1,0 +1,10 @@
+[target.aarch64-linux-android]
+linker = "/Users/farrel01/Library/Android/sdk/ndk/30.0.15729638/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android26-clang"
+ar = "/Users/farrel01/Library/Android/sdk/ndk/30.0.15729638/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"
+
+[env]
+CC = "/Users/farrel01/Library/Android/sdk/ndk/30.0.15729638/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android26-clang"
+CXX = "/Users/farrel01/Library/Android/sdk/ndk/30.0.15729638/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android26-clang++"
+AR = "/Users/farrel01/Library/Android/sdk/ndk/30.0.15729638/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"
+CFLAGS = "-target aarch64-linux-android26"
+CXXFLAGS = "-target aarch64-linux-android26"

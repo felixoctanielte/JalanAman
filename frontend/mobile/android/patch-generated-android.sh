@@ -18,6 +18,16 @@ if [ ! -f "$MANIFEST" ]; then
   exit 0
 fi
 
+# BSD sed (macOS) requires an explicit backup extension for in-place edits,
+# while GNU sed (Linux/WSL) accepts `-i` on its own.
+sed_in_place() {
+  if sed --version >/dev/null 2>&1; then
+    sed -i "$@"
+  else
+    sed -i '' "$@"
+  fi
+}
+
 add_permission() {
   local permission="$1"
   local line="    <uses-permission android:name=\"android.permission.$permission\" />"
@@ -46,6 +56,12 @@ add_permission "VIBRATE"
 add_permission "FOREGROUND_SERVICE"
 add_permission "FOREGROUND_SERVICE_MEDIA_PLAYBACK"
 
+# The development API is exposed to the device through `adb reverse` on
+# localhost. Android 9+ blocks cleartext HTTP unless this flag is present.
+if ! grep -q 'android:usesCleartextTraffic="true"' "$MANIFEST"; then
+  perl -0pi -e 's/<application\b/<application android:usesCleartextTraffic="true"/' "$MANIFEST"
+fi
+
 add_sos_service() {
   local tmp_manifest
 
@@ -66,7 +82,7 @@ add_sos_service() {
 add_sos_service
 
 if [ -f "$WEB_CHROME_CLIENT" ]; then
-  sed -i '/super\.onGeolocationPermissionsShowPrompt(origin, callback)/d' "$WEB_CHROME_CLIENT"
+  sed_in_place '/super\.onGeolocationPermissionsShowPrompt(origin, callback)/d' "$WEB_CHROME_CLIENT"
 fi
 
 cat > "$LOCATION_BRIDGE" <<'KOTLIN'
@@ -452,25 +468,23 @@ class SosAlarmService : Service() {
 KOTLIN
 
 if [ -f "$WEB_VIEW" ] && ! grep -q "JalanAmanNative" "$WEB_VIEW"; then
-  sed -i '/settings\.javaScriptCanOpenWindowsAutomatically = true/a\        addJavascriptInterface(JalanAmanLocationBridge(context), "JalanAmanNative")' "$WEB_VIEW"
+  sed_in_place '/settings\.javaScriptCanOpenWindowsAutomatically = true/a\
+        addJavascriptInterface(JalanAmanLocationBridge(context), "JalanAmanNative")' "$WEB_VIEW"
 fi
 
 # Dioxus 0.6 initializes its Android app trampoline once per process. Keep the existing task alive
 # when Android Back is pressed so reopening JalanAman cannot create a second root in that process.
 if [ -f "$WRY_ACTIVITY" ] && ! grep -q "moveTaskToBack(true)" "$WRY_ACTIVITY"; then
-  sed -i '/return super\.onKeyDown(keyCode, event)/i\        if (keyCode == KeyEvent.KEYCODE_BACK) {\
-            moveTaskToBack(true)\
-            return true\
-        }' "$WRY_ACTIVITY"
+  perl -0pi -e 's{        return super\.onKeyDown\(keyCode, event\)}{        if (keyCode == KeyEvent.KEYCODE_BACK) {\n            moveTaskToBack(true)\n            return true\n        }\n        return super.onKeyDown(keyCode, event)}' "$WRY_ACTIVITY"
 fi
 
 # Let the keyboard resize the WebView instead of covering form fields (report note, contact inputs).
 if [ -f "$MANIFEST" ] && ! grep -q "windowSoftInputMode" "$MANIFEST"; then
-  sed -i 's/android:name="dev\.dioxus\.main\.MainActivity">/android:name="dev.dioxus.main.MainActivity" android:windowSoftInputMode="adjustResize">/' "$MANIFEST"
+  sed_in_place 's/android:name="dev\.dioxus\.main\.MainActivity">/android:name="dev.dioxus.main.MainActivity" android:windowSoftInputMode="adjustResize">/' "$MANIFEST"
 fi
 
 if [ -f "$MANIFEST" ] && ! grep -q 'android:launchMode="singleTask"' "$MANIFEST"; then
-  sed -i 's/android:name="dev\.dioxus\.main\.MainActivity"/android:name="dev.dioxus.main.MainActivity" android:launchMode="singleTask"/' "$MANIFEST"
+  sed_in_place 's/android:name="dev\.dioxus\.main\.MainActivity"/android:name="dev.dioxus.main.MainActivity" android:launchMode="singleTask"/' "$MANIFEST"
 fi
 
 # Brand the Android chrome so the system bars sit quietly around the liquid glass UI.

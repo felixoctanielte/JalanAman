@@ -142,3 +142,12 @@ pub fn category_emoji(cat: &str) -> &'static str {
         _ => "⚪",
     }
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct HeatmapPoint {
+    pub lat: f64,
+    pub lng: f64,
+    pub weight: f64,
+    pub category: String,
+    pub description: String,
+}
