@@ -1,10 +1,8 @@
+use crate::pages::contacts::Contacts;
+use crate::pages::dashboard::Dashboard;
+use crate::pages::home::Home;
 use dioxus::prelude::*;
 use dioxus_router::prelude::*;
-
-// Kita harus import semua komponen yang dipakai di Route
-use crate::pages::dashboard::Dashboard;
-use crate::pages::home::Home; // <-- INI YANG KURANG TADI
-use crate::pages::contacts::Contacts;
 
 #[derive(Routable, Clone, PartialEq, Debug)]
 #[rustfmt::skip]

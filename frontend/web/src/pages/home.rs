@@ -1,12 +1,12 @@
+use crate::app::Route;
 use dioxus::prelude::*;
-use dioxus_router::prelude::*;
-use crate::app::Route; // Menggunakan path route yang benar sesuai module tree
+use dioxus_router::prelude::*; // Menggunakan path route yang benar sesuai module tree
 
 #[component]
 pub fn Home() -> Element {
     rsx! {
         div { class: "min-h-screen w-full bg-slate-50 flex flex-col relative font-sans",
-            
+
             // Navbar Biru Mobile bawaan
             header { class: "bg-[#2563eb] text-white px-6 py-4 flex justify-between items-center shadow-md shrink-0",
                 div { class: "flex items-baseline gap-2",
@@ -14,8 +14,8 @@ pub fn Home() -> Element {
                     span { class: "text-xs text-blue-200", "Rute Teraman Indonesia" }
                 },
                 div { class: "flex items-center gap-4",
-                    Link { 
-                        to: Route::Dashboard {}, 
+                    Link {
+                        to: Route::Dashboard {},
                         class: "text-sm font-semibold bg-blue-700/50 hover:bg-blue-700 px-3 py-1.5 rounded transition-all",
                         "🗺️ Dashboard RT/RW"
                     }

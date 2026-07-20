@@ -1,4 +1,4 @@
-.PHONY: dev-infra dev-backend dev-web dev-android dev-ios dev-frontend up down logs db-migrate db-reset seed vapid-keys fmt check build-backend build-frontend build-android
+.PHONY: dev-infra dev-backend dev-web dev-android dev-android-auto dev-ios dev-frontend up down logs db-migrate db-reset seed vapid-keys fmt check build-backend build-frontend build-android
 
 MOBILE_CACHE_DIR ?= $(HOME)/.cache/jalanaman
 MOBILE_GRADLE_HOME ?= $(MOBILE_CACHE_DIR)/gradle
@@ -18,6 +18,9 @@ dev-web:
 # Mobile Android via Linux/WSL SDK wrapper.
 dev-android:
 	cd frontend/mobile && JALANAMAN_CACHE_DIR=$(MOBILE_CACHE_DIR) GRADLE_USER_HOME=$(MOBILE_GRADLE_HOME) bash android/serve-android-wsl.sh
+
+dev-android-auto:
+	JALANAMAN_CACHE_DIR=$(MOBILE_CACHE_DIR) GRADLE_USER_HOME=$(MOBILE_GRADLE_HOME) bash scripts/dev-android-auto.sh
 
 dev-ios:
 	cd frontend/mobile && dx serve --platform ios

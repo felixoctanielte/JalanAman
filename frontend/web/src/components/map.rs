@@ -1,8 +1,8 @@
 //! Google Maps / MapLibre component — web-only (uses JS interop).
-use crate::utils::js;
-use dioxus::prelude::*;
-use dioxus::document::eval;
 use crate::services::api::HeatmapPoint;
+use crate::utils::js;
+use dioxus::document::eval;
+use dioxus::prelude::*;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct HeatmapMapViewProps {
@@ -15,11 +15,12 @@ pub struct HeatmapMapViewProps {
 pub fn HeatmapMapView(props: HeatmapMapViewProps) -> Element {
     use_effect(move || {
         let points_json = serde_json::to_string(&props.points).unwrap_or_else(|_| "[]".to_string());
-        
+
         let lat = props.center_lat;
         let lng = props.center_lng;
 
-        let mut map_eval = eval(r#"
+        let mut map_eval = eval(
+            r#"
             let [raw_points, lat, lng] = await dioxus.recv();
             setTimeout(() => {
                 if (window.ja_initMap) {
@@ -29,8 +30,9 @@ pub fn HeatmapMapView(props: HeatmapMapViewProps) -> Element {
                     }
                 }
             }, 50);
-        "#);
-        
+        "#,
+        );
+
         let _ = map_eval.send((points_json, lat, lng));
     });
 

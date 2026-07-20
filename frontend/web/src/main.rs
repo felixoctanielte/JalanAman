@@ -10,23 +10,22 @@ pub mod utils;
 
 // 2. Deklarasikan struktur modul halaman (pages) dengan benar
 pub mod pages {
-    pub mod home;
-    pub mod dashboard;
     pub mod contacts;
+    pub mod dashboard;
+    pub mod home;
 }
 
 // 3. Import halaman agar bisa dirender oleh Router
-use pages::home::Home;
 use pages::dashboard::Dashboard;
+use pages::home::Home;
 
 // 4. Definisikan Route resmi aplikasi web JalanAman di sini
 #[derive(Clone, Routable, Debug, PartialEq)]
 pub enum Route {
     #[route("/")]
     Home {},
-    
     #[route("/dashboard")]
-    Dashboard {}, 
+    Dashboard {},
 }
 
 fn main() {

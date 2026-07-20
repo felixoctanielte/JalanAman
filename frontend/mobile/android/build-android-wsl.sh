@@ -15,6 +15,16 @@ export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$PROJECT_CACHE/android-target}"
 export GRADLE_USER_HOME="${GRADLE_USER_HOME:-$PROJECT_CACHE/gradle}"
 export JALANAMAN_API_BASE_URL="${JALANAMAN_API_BASE_URL:-http://127.0.0.1:8080/api}"
 
+DX_PROFILE="debug"
+for arg in "$@"; do
+  if [ "$arg" = "--release" ] || [ "$arg" = "-r" ]; then
+    DX_PROFILE="release"
+  fi
+done
+
+ANDROID_APP_DIR="$MOBILE_DIR/target/dx/jalanaman_mobile/$DX_PROFILE/android/app"
+APK_PATH="$ANDROID_APP_DIR/app/build/outputs/apk/debug/app-debug.apk"
+
 if [ ! -d "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64" ]; then
   echo "ANDROID_NDK_HOME is invalid: $ANDROID_NDK_HOME" >&2
   echo "Run: bash android/repair-android-env-wsl.sh" >&2
@@ -22,22 +32,23 @@ if [ ! -d "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64" ]; then
 fi
 
 cd "$MOBILE_DIR"
-dx build --platform android "$@"
-
-DX_PROFILE="debug"
-for arg in "$@"; do
-  if [ "$arg" = "--release" ] || [ "$arg" = "-r" ]; then
-    DX_PROFILE="release"
+BUILD_LOG="$(mktemp)"
+if ! dx build --platform android "$@" 2>&1 | tee "$BUILD_LOG"; then
+  if grep -q "Build completed successfully" "$BUILD_LOG" && [ -x "$ANDROID_APP_DIR/gradlew" ]; then
+    echo "dx completed bundling, but its internal Gradle assemble failed. Retrying with the patched Android project."
+  else
+    rm -f "$BUILD_LOG"
+    exit 1
   fi
-done
+fi
+rm -f "$BUILD_LOG"
+
 JALANAMAN_DX_PROFILE="$DX_PROFILE" bash "$SCRIPT_DIR/patch-generated-android.sh"
 
-ANDROID_APP_DIR="$MOBILE_DIR/target/dx/jalanaman_mobile/$DX_PROFILE/android/app"
 if [ -x "$ANDROID_APP_DIR/gradlew" ]; then
   (cd "$ANDROID_APP_DIR" && ./gradlew assembleDebug)
 fi
 
-APK_PATH="$ANDROID_APP_DIR/app/build/outputs/apk/debug/app-debug.apk"
 if [ ! -f "$APK_PATH" ]; then
   echo "APK debug tidak ditemukan setelah build: $APK_PATH" >&2
   exit 1
