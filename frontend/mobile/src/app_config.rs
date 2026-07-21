@@ -23,6 +23,28 @@ pub(crate) enum MapPresentation {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum ThemeMode {
+    Dark,
+    Light,
+}
+
+impl ThemeMode {
+    pub(crate) fn storage_value(self) -> &'static str {
+        match self {
+            Self::Dark => "dark",
+            Self::Light => "light",
+        }
+    }
+
+    pub(crate) fn from_storage(value: &str) -> Self {
+        match value {
+            "light" => Self::Light,
+            _ => Self::Dark,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum NavIconKind {
     Map,
     Route,
@@ -129,6 +151,20 @@ pub(crate) enum CopyKey {
     Nearby,
     SosContacts,
     SafetySettings,
+    SettingsTitle,
+    AssistanceMode,
+    VoiceAndChat,
+    ChatOnly,
+    VoiceModeBody,
+    VoiceShortcutReady,
+    VoiceShortcutDisabled,
+    MicrophoneAccess,
+    EnableMicrophone,
+    TestVoiceSos,
+    MicrophoneRequested,
+    Appearance,
+    DarkMode,
+    LightMode,
     NearbyMap,
     Active,
     SosAlerts,
@@ -186,6 +222,11 @@ pub(crate) enum CopyKey {
     MapSrcMarkAccept,
     Latitude,
     Longitude,
+    VoiceSosTitle,
+    VoiceListening,
+    VoiceMatched,
+    VoiceNotRecognized,
+    VoicePermissionMissing,
     SosButton,
     StopSosButton,
     ContactChannels,
@@ -550,6 +591,20 @@ const COPY_ENTRIES: &[LocalizedCopy] = &[
     copy_entry!(Nearby, "Di sekitar", "Nearby"),
     copy_entry!(SosContacts, "Kontak SOS", "SOS contacts"),
     copy_entry!(SafetySettings, "Pengaturan keamanan", "Safety settings"),
+    copy_entry!(SettingsTitle, "Settings", "Settings"),
+    copy_entry!(AssistanceMode, "Mode bantuan", "Assistance mode"),
+    copy_entry!(VoiceAndChat, "Voice + Chat", "Voice + Chat"),
+    copy_entry!(ChatOnly, "Chat saja", "Chat only"),
+    copy_entry!(VoiceModeBody, "Voice dipakai saat widget atau shortcut Voice SOS membuka aplikasi. Chat saja tetap memakai tombol SOS, email, dan WhatsApp fallback.", "Voice is used when a Voice SOS widget or shortcut opens the app. Chat only still uses the SOS button, email, and WhatsApp fallback."),
+    copy_entry!(VoiceShortcutReady, "Voice SOS siap untuk widget atau shortcut.", "Voice SOS is ready for a widget or shortcut."),
+    copy_entry!(VoiceShortcutDisabled, "Voice SOS belum aktif. Pilih Voice + Chat di Settings dulu.", "Voice SOS is not enabled. Choose Voice + Chat in Settings first."),
+    copy_entry!(MicrophoneAccess, "Akses mikrofon", "Microphone access"),
+    copy_entry!(EnableMicrophone, "Aktifkan mikrofon", "Enable microphone"),
+    copy_entry!(TestVoiceSos, "Coba Voice SOS", "Test Voice SOS"),
+    copy_entry!(MicrophoneRequested, "Izin mikrofon diminta. Jika prompt muncul, pilih Izinkan.", "Microphone permission requested. If a prompt appears, choose Allow."),
+    copy_entry!(Appearance, "Tampilan", "Appearance"),
+    copy_entry!(DarkMode, "Dark", "Dark"),
+    copy_entry!(LightMode, "Light", "Light"),
     copy_entry!(NearbyMap, "Peta sekitar", "Nearby map"),
     copy_entry!(Active, "Aktif", "Active"),
     copy_entry!(SosAlerts, "Peringatan SOS", "SOS alerts"),
@@ -607,6 +662,11 @@ const COPY_ENTRIES: &[LocalizedCopy] = &[
     copy_entry!(MapSrcMarkAccept, "Gunakan titik", "Use point"),
     copy_entry!(Latitude, "Latitude", "Latitude"),
     copy_entry!(Longitude, "Longitude", "Longitude"),
+    copy_entry!(VoiceSosTitle, "Voice SOS", "Voice SOS"),
+    copy_entry!(VoiceListening, "Mendengarkan perintah suara...", "Listening for a voice command..."),
+    copy_entry!(VoiceMatched, "Perintah suara dikenali. Menyiapkan SOS...", "Voice command recognized. Preparing SOS..."),
+    copy_entry!(VoiceNotRecognized, "Perintah suara tidak dikenali. Ucapkan JalanAman SOS, tolong, atau bantuan.", "Voice command was not recognized. Say JalanAman SOS, help, or emergency."),
+    copy_entry!(VoicePermissionMissing, "Izin mikrofon belum aktif. Izinkan mikrofon untuk memakai Voice SOS.", "Microphone permission is not enabled. Allow microphone access to use Voice SOS."),
     copy_entry!(SosButton, "SOS", "SOS"),
     copy_entry!(StopSosButton, "STOP", "STOP"),
     copy_entry!(ContactChannels, "Email/WA/SOS", "Email/WA/SOS"),

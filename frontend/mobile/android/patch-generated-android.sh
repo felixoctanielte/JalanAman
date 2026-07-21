@@ -57,6 +57,7 @@ add_permission "ACCESS_FINE_LOCATION"
 add_permission "ACCESS_NETWORK_STATE"
 add_permission "POST_NOTIFICATIONS"
 add_permission "VIBRATE"
+add_permission "RECORD_AUDIO"
 add_permission "FOREGROUND_SERVICE"
 add_permission "FOREGROUND_SERVICE_MEDIA_PLAYBACK"
 
@@ -103,20 +104,27 @@ import android.location.Location
 import android.location.LocationManager
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.CancellationSignal
 import android.os.Looper
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
 import android.util.Log
 import android.webkit.JavascriptInterface
+import android.webkit.WebView
 import org.json.JSONObject
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
-class JalanAmanLocationBridge(private val context: Context) {
+class JalanAmanLocationBridge(private val context: Context, private val webView: WebView? = null) {
   companion object {
     private const val TAG = "JalanAmanNative"
   }
+
+  @Volatile private var speechRecognizer: SpeechRecognizer? = null
 
   @JavascriptInterface
   fun requestAppPermissionsJson(): String {
@@ -125,6 +133,79 @@ class JalanAmanLocationBridge(private val context: Context) {
       JSONObject().put("ok", true).toString()
     } catch (ex: Exception) {
       JSONObject().put("ok", false).put("error", ex.message ?: "Izin aplikasi belum dapat diminta.").toString()
+    }
+  }
+
+  @JavascriptInterface
+  fun requestVoicePermissionJson(): String {
+    return try {
+      requestVoicePermissionIfPossible()
+      JSONObject().put("ok", true).toString()
+    } catch (ex: Exception) {
+      JSONObject().put("ok", false).put("error", ex.message ?: "Izin mikrofon belum dapat diminta.").toString()
+    }
+  }
+
+  @JavascriptInterface
+  fun startVoiceCommandJson(): String {
+    return try {
+      requestVoicePermissionIfPossible()
+      if (!hasRecordAudioPermission()) {
+        return JSONObject()
+          .put("ok", false)
+          .put("error", "Izin mikrofon belum aktif. Izinkan mikrofon untuk memakai Voice SOS.")
+          .toString()
+      }
+      if (!SpeechRecognizer.isRecognitionAvailable(context)) {
+        return JSONObject()
+          .put("ok", false)
+          .put("error", "Voice SOS belum tersedia di perangkat ini.")
+          .toString()
+      }
+
+      val activity = context as? Activity
+      if (activity == null) {
+        android.os.Handler(Looper.getMainLooper()).post { startVoiceRecognitionOnMain() }
+      } else {
+        activity.runOnUiThread { startVoiceRecognitionOnMain() }
+      }
+      JSONObject().put("ok", true).toString()
+    } catch (ex: Exception) {
+      JSONObject().put("ok", false).put("error", ex.message ?: "Voice SOS belum dapat dimulai.").toString()
+    }
+  }
+
+  @JavascriptInterface
+  fun stopVoiceCommandJson(): String {
+    return try {
+      val activity = context as? Activity
+      if (activity == null) {
+        android.os.Handler(Looper.getMainLooper()).post { stopVoiceRecognition(true) }
+      } else {
+        activity.runOnUiThread { stopVoiceRecognition(true) }
+      }
+      JSONObject().put("ok", true).toString()
+    } catch (ex: Exception) {
+      JSONObject().put("ok", false).put("error", ex.message ?: "Voice SOS belum dapat dihentikan.").toString()
+    }
+  }
+
+  @JavascriptInterface
+  fun consumeLaunchActionJson(): String {
+    return try {
+      val activity = context as? Activity
+      val intent = activity?.intent
+      val action = normalizeLaunchAction(intent)
+
+      if (activity != null && intent != null && action != null) {
+        intent.removeExtra("jalanaman_action")
+        intent.data = null
+        activity.intent = intent
+      }
+
+      JSONObject().put("action", action).toString()
+    } catch (ex: Exception) {
+      JSONObject().put("action", JSONObject.NULL).toString()
     }
   }
 
@@ -218,6 +299,12 @@ class JalanAmanLocationBridge(private val context: Context) {
       context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
   }
 
+  private fun hasRecordAudioPermission(): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
+
+    return context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+  }
+
   private fun requestRuntimePermissionsIfPossible() {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
     val activity = context as? Activity ?: return
@@ -245,6 +332,130 @@ class JalanAmanLocationBridge(private val context: Context) {
       activity.runOnUiThread(request)
     }
   }
+
+  private fun requestVoicePermissionIfPossible() {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || hasRecordAudioPermission()) return
+    val activity = context as? Activity ?: return
+
+    val request = Runnable {
+      if (!hasRecordAudioPermission()) {
+        activity.requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 6203)
+      }
+    }
+
+    if (Looper.myLooper() == Looper.getMainLooper()) {
+      request.run()
+    } else {
+      activity.runOnUiThread(request)
+    }
+  }
+
+  private fun normalizeLaunchAction(intent: Intent?): String? {
+    val extra = intent?.getStringExtra("jalanaman_action")
+      ?.trim()
+      ?.lowercase()
+      ?.replace('-', '_')
+    if (!extra.isNullOrBlank()) return extra
+
+    val queryAction = intent?.data
+      ?.getQueryParameter("action")
+      ?.trim()
+      ?.lowercase()
+      ?.replace('-', '_')
+    if (!queryAction.isNullOrBlank()) return queryAction
+
+    return when (intent?.action) {
+      "dev.dioxus.main.VOICE_SOS",
+      "com.jalanaman.app.VOICE_SOS" -> "voice_sos"
+      "dev.dioxus.main.SOS",
+      "com.jalanaman.app.SOS" -> "sos"
+      else -> null
+    }
+  }
+
+  private fun startVoiceRecognitionOnMain() {
+    stopVoiceRecognition(false)
+
+    val recognizer = SpeechRecognizer.createSpeechRecognizer(context)
+    speechRecognizer = recognizer
+    recognizer.setRecognitionListener(object : RecognitionListener {
+      override fun onReadyForSpeech(params: Bundle?) {
+        postVoiceEvent("listening")
+      }
+
+      override fun onBeginningOfSpeech() = Unit
+      override fun onRmsChanged(rmsdB: Float) = Unit
+      override fun onBufferReceived(buffer: ByteArray?) = Unit
+      override fun onEndOfSpeech() = Unit
+
+      override fun onError(error: Int) {
+        stopVoiceRecognition(false)
+        postVoiceEvent("error", error = voiceErrorMessage(error))
+      }
+
+      override fun onResults(results: Bundle?) {
+        val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+        val text = matches?.firstOrNull { it.isNotBlank() }
+        stopVoiceRecognition(false)
+        if (text.isNullOrBlank()) {
+          postVoiceEvent("error", error = "Perintah suara tidak terdengar.")
+        } else {
+          postVoiceEvent("result", text = text)
+        }
+      }
+
+      override fun onPartialResults(partialResults: Bundle?) = Unit
+      override fun onEvent(eventType: Int, params: Bundle?) = Unit
+    })
+
+    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+      putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+      putExtra(RecognizerIntent.EXTRA_LANGUAGE, "id-ID")
+      putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "id-ID")
+      putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+      putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+      putExtra(RecognizerIntent.EXTRA_PROMPT, "Ucapkan JalanAman SOS")
+    }
+
+    recognizer.startListening(intent)
+    postVoiceEvent("listening")
+  }
+
+  private fun stopVoiceRecognition(notify: Boolean) {
+    val recognizer = speechRecognizer
+    speechRecognizer = null
+    runCatching { recognizer?.cancel() }
+    runCatching { recognizer?.destroy() }
+    if (notify) {
+      postVoiceEvent("stopped")
+    }
+  }
+
+  private fun postVoiceEvent(status: String, text: String? = null, error: String? = null) {
+    val payload = JSONObject()
+      .put("type", "jalanaman-voice-command")
+      .put("status", status)
+    if (text != null) payload.put("text", text)
+    if (error != null) payload.put("error", error)
+
+    val target = webView ?: return
+    val script = "window.postMessage(${payload}, '*');"
+    target.post { target.evaluateJavascript(script, null) }
+  }
+
+  private fun voiceErrorMessage(error: Int): String =
+    when (error) {
+      SpeechRecognizer.ERROR_AUDIO -> "Mikrofon belum dapat dipakai."
+      SpeechRecognizer.ERROR_CLIENT -> "Voice SOS dibatalkan."
+      SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Izin mikrofon belum aktif."
+      SpeechRecognizer.ERROR_NETWORK,
+      SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Voice SOS membutuhkan koneksi yang stabil."
+      SpeechRecognizer.ERROR_NO_MATCH -> "Perintah suara tidak dikenali."
+      SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Voice SOS masih mendengarkan. Coba lagi sebentar."
+      SpeechRecognizer.ERROR_SERVER -> "Layanan voice perangkat belum merespons."
+      SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Tidak ada suara yang terdengar."
+      else -> "Voice SOS belum dapat mengenali perintah."
+    }
 
   @SuppressLint("MissingPermission")
   private fun readLastKnownLocation(manager: LocationManager): Location? =
@@ -471,15 +682,28 @@ class SosAlarmService : Service() {
 }
 KOTLIN
 
-if [ -f "$WEB_VIEW" ] && ! grep -q "JalanAmanNative" "$WEB_VIEW"; then
-  sed_in_place '/settings\.javaScriptCanOpenWindowsAutomatically = true/a\
-        addJavascriptInterface(JalanAmanLocationBridge(context), "JalanAmanNative")' "$WEB_VIEW"
+if [ -f "$WEB_VIEW" ]; then
+  if grep -q "JalanAmanLocationBridge(context)" "$WEB_VIEW"; then
+    sed_in_place 's/JalanAmanLocationBridge(context)/JalanAmanLocationBridge(context, this)/' "$WEB_VIEW"
+  elif ! grep -q "JalanAmanNative" "$WEB_VIEW"; then
+    sed_in_place '/settings\.javaScriptCanOpenWindowsAutomatically = true/a\
+        addJavascriptInterface(JalanAmanLocationBridge(context, this), "JalanAmanNative")' "$WEB_VIEW"
+  fi
 fi
 
 # Dioxus 0.6 initializes its Android app trampoline once per process. Keep the existing task alive
 # when Android Back is pressed so reopening JalanAman cannot create a second root in that process.
 if [ -f "$WRY_ACTIVITY" ] && ! grep -q "moveTaskToBack(true)" "$WRY_ACTIVITY"; then
   perl -0pi -e 's{        return super\.onKeyDown\(keyCode, event\)}{        if (keyCode == KeyEvent.KEYCODE_BACK) {\n            moveTaskToBack(true)\n            return true\n        }\n        return super.onKeyDown(keyCode, event)}' "$WRY_ACTIVITY"
+fi
+
+if [ -f "$WRY_ACTIVITY" ] && ! grep -q "import android.content.Intent" "$WRY_ACTIVITY"; then
+  sed_in_place '/import android.annotation.SuppressLint/a\
+import android.content.Intent' "$WRY_ACTIVITY"
+fi
+
+if [ -f "$WRY_ACTIVITY" ] && ! grep -q "override fun onNewIntent" "$WRY_ACTIVITY"; then
+  perl -0pi -e 's#    override fun onStart\(\) \{#    override fun onNewIntent(intent: Intent?) {\n        super.onNewIntent(intent)\n        setIntent(intent)\n    }\n\n    override fun onStart() {#' "$WRY_ACTIVITY"
 fi
 
 # Let the keyboard resize the WebView instead of covering form fields (report note, contact inputs).

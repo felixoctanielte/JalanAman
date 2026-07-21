@@ -75,6 +75,17 @@ pub struct SosTriggerPayload {
 pub struct SosTriggerResponse {
     pub notified_count: usize,
     pub total_contacts: usize,
+    #[serde(default)]
+    pub results: Vec<ContactNotifyResult>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ContactNotifyResult {
+    pub name: String,
+    pub connected: bool,
+    pub push_sent: bool,
+    pub email_sent: bool,
+    pub error: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

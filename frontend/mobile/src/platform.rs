@@ -2,8 +2,14 @@ use dioxus::prelude::*;
 use jalanaman_shared::EmergencyContact;
 use serde::Deserialize;
 
-use crate::app_config::{app_spec, CopyKey, Language};
+use crate::app_config::{app_spec, CopyKey, Language, ThemeMode};
 use crate::models::{GeoPoint, LocationEval};
+
+#[derive(Debug, Deserialize)]
+struct NativeBridgeResult {
+    ok: bool,
+    error: Option<String>,
+}
 
 pub(crate) async fn read_device_hash() -> String {
     let eval = document::eval(
@@ -119,6 +125,104 @@ pub(crate) async fn request_app_permissions() {
         "#,
     )
     .await;
+}
+
+pub(crate) async fn read_voice_sos_enabled() -> bool {
+    let eval = document::eval(
+        r#"
+        return localStorage.getItem('ja_voice_sos_enabled') === 'true';
+        "#,
+    );
+
+    eval.await
+        .ok()
+        .and_then(|value| bool::deserialize(&value).ok())
+        .unwrap_or(false)
+}
+
+pub(crate) fn write_voice_sos_enabled(enabled: bool) {
+    spawn(async move {
+        let value = if enabled { "true" } else { "false" };
+        let script = format!(
+            r#"
+            localStorage.setItem('ja_voice_sos_enabled', '{value}');
+            return true;
+            "#
+        );
+        let _ = document::eval(&script).await;
+    });
+}
+
+pub(crate) async fn read_theme_mode() -> ThemeMode {
+    let eval = document::eval(
+        r#"
+        return localStorage.getItem('ja_theme_mode') || 'dark';
+        "#,
+    );
+
+    eval.await
+        .ok()
+        .and_then(|value| String::deserialize(&value).ok())
+        .map(|value| ThemeMode::from_storage(&value))
+        .unwrap_or(ThemeMode::Dark)
+}
+
+pub(crate) fn write_theme_mode(mode: ThemeMode) {
+    spawn(async move {
+        let value = mode.storage_value();
+        let script = format!(
+            r#"
+            localStorage.setItem('ja_theme_mode', '{value}');
+            return true;
+            "#
+        );
+        let _ = document::eval(&script).await;
+    });
+}
+
+pub(crate) async fn consume_launch_action() -> Option<String> {
+    let eval = document::eval(
+        r#"
+        try {
+            if (window.JalanAmanNative && window.JalanAmanNative.consumeLaunchActionJson) {
+                return JSON.parse(window.JalanAmanNative.consumeLaunchActionJson());
+            }
+            return { action: null };
+        } catch (_) {
+            return { action: null };
+        }
+        "#,
+    );
+
+    let value = eval.await.ok()?;
+    let action = crate::models::LaunchActionEval::deserialize(&value).ok()?;
+    action.action
+}
+
+pub(crate) async fn request_microphone_permission() -> Result<(), String> {
+    let eval = document::eval(
+        r#"
+        try {
+            if (window.JalanAmanNative && window.JalanAmanNative.requestVoicePermissionJson) {
+                return JSON.parse(window.JalanAmanNative.requestVoicePermissionJson());
+            }
+            return { ok: false, error: 'Izin mikrofon hanya tersedia di Android.' };
+        } catch (err) {
+            return { ok: false, error: err && err.message ? err.message : 'Izin mikrofon belum dapat diminta.' };
+        }
+        "#,
+    );
+
+    let value = eval.await.map_err(|err| err.to_string())?;
+    let result = NativeBridgeResult::deserialize(&value).map_err(|err| err.to_string())?;
+
+    if result.ok {
+        Ok(())
+    } else {
+        Err(result
+            .error
+            .unwrap_or_else(|| "Izin mikrofon belum dapat diminta.".to_string()))
+    }
 }
 
 pub(crate) fn normalize_whatsapp_phone(value: &str) -> Option<String> {
@@ -246,6 +350,48 @@ pub(crate) fn stop_sos_alarm() {
                 }
             } catch (_) {}
             if (navigator.vibrate) navigator.vibrate(0);
+            return true;
+            "#,
+        )
+        .await;
+    });
+}
+
+pub(crate) async fn start_voice_command() -> Result<(), String> {
+    let eval = document::eval(
+        r#"
+        try {
+            if (window.JalanAmanNative && window.JalanAmanNative.startVoiceCommandJson) {
+                return JSON.parse(window.JalanAmanNative.startVoiceCommandJson());
+            }
+            return { ok: false, error: 'Voice SOS hanya tersedia di Android.' };
+        } catch (err) {
+            return { ok: false, error: err && err.message ? err.message : 'Voice SOS belum dapat dimulai.' };
+        }
+        "#,
+    );
+
+    let value = eval.await.map_err(|err| err.to_string())?;
+    let result = NativeBridgeResult::deserialize(&value).map_err(|err| err.to_string())?;
+
+    if result.ok {
+        Ok(())
+    } else {
+        Err(result
+            .error
+            .unwrap_or_else(|| "Voice SOS belum dapat dimulai.".to_string()))
+    }
+}
+
+pub(crate) fn stop_voice_command() {
+    spawn(async {
+        let _ = document::eval(
+            r#"
+            try {
+                if (window.JalanAmanNative && window.JalanAmanNative.stopVoiceCommandJson) {
+                    window.JalanAmanNative.stopVoiceCommandJson();
+                }
+            } catch (_) {}
             return true;
             "#,
         )

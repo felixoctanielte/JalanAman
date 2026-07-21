@@ -2,6 +2,8 @@ use crate::app_config::ThemeSpec;
 
 pub(crate) const APP: &str = "min-height:100dvh;background:radial-gradient(circle at 50% 108%,rgba(34,197,94,0.34),rgba(34,197,94,0) 34%),radial-gradient(circle at 14% 8%,rgba(37,99,235,0.22),rgba(37,99,235,0) 30%),linear-gradient(145deg,#27272a 0%,#17181c 46%,#0b0f14 100%);color:#f8fafc;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;";
 pub(crate) const SCREEN: &str = "width:100vw;max-width:100vw;min-height:100dvh;background:radial-gradient(circle at 50% 92%,rgba(34,197,94,0.18),rgba(34,197,94,0) 28%),radial-gradient(circle at 86% 10%,rgba(14,165,233,0.18),rgba(14,165,233,0) 34%),linear-gradient(180deg,rgba(39,40,45,0.94) 0%,rgba(23,24,29,0.95) 48%,rgba(10,14,19,0.98) 100%);position:relative;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,0.12),0 0 0 1px rgba(255,255,255,0.08);";
+pub(crate) const APP_LIGHT: &str = "min-height:100dvh;background:linear-gradient(145deg,#eff6ff 0%,#f8fafc 46%,#ecfeff 100%);color:#0f172a;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;";
+pub(crate) const SCREEN_LIGHT: &str = "width:100vw;max-width:100vw;min-height:100dvh;background:linear-gradient(180deg,#ffffff 0%,#f8fafc 52%,#eef6ff 100%);position:relative;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,0.96),0 0 0 1px rgba(15,23,42,0.08);";
 pub(crate) const HEADER: &str = "height:88px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,rgba(58,59,66,0.72),rgba(30,32,39,0.58));border-bottom:1px solid rgba(255,255,255,0.13);box-sizing:border-box;box-shadow:0 18px 46px rgba(0,0,0,0.26),inset 0 1px 0 rgba(255,255,255,0.12);backdrop-filter:blur(26px) saturate(175%);-webkit-backdrop-filter:blur(26px) saturate(175%);";
 pub(crate) const BRAND_WRAP: &str = "display:flex;align-items:center;gap:12px;min-width:0;";
 pub(crate) const BRAND: &str = "font-size:21px;font-weight:950;color:#f8fafc;letter-spacing:0;line-height:1;text-shadow:0 1px 1px rgba(0,0,0,0.24);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
@@ -51,7 +53,7 @@ pub(crate) const DASHBOARD_WRAP: &str = "min-height:100dvh;background:radial-gra
 pub(crate) const BACK_LINK: &str = "display:inline-flex;align-items:center;gap:6px;color:#93c5fd;text-decoration:none;font-size:13px;font-weight:850;margin-bottom:18px;";
 pub(crate) const DASH_TITLE: &str =
     "font-size:24px;line-height:1.1;font-weight:900;color:#f8fafc;margin:0 0 14px;";
-pub(crate) const MOTION_CSS: &str = r#"
+pub(crate) const MOTION_CSS: &str = r##"
     @keyframes ja-splash-in { from { opacity:0; transform:scale(.94); } to { opacity:1; transform:scale(1); } }
     @keyframes ja-logo-float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-7px); } }
     @keyframes ja-panel-in { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
@@ -119,7 +121,83 @@ pub(crate) const MOTION_CSS: &str = r#"
       pointer-events:none;
     }
     .ja-sos-active { animation:ja-sos-pulse 1.25s ease-out infinite; }
-"#;
+    .ja-theme-light, .ja-theme-light * { text-shadow:none !important; }
+    .ja-theme-light [style*="rgba(58,59,66"],
+    .ja-theme-light [style*="rgba(52,54,62"],
+    .ja-theme-light [style*="rgba(44,46,53"],
+    .ja-theme-light [style*="rgba(31,34,40"],
+    .ja-theme-light [style*="rgba(47,50,58"],
+    .ja-theme-light [style*="rgba(255,255,255,0.07"],
+    .ja-theme-light [style*="rgba(255,255,255,0.08"],
+    .ja-theme-light [style*="rgba(255,255,255,0.09"],
+    .ja-theme-light [style*="rgba(255,255,255,0.13"] {
+      background:#ffffff !important;
+      border-color:rgba(15,23,42,.12) !important;
+      box-shadow:0 12px 30px rgba(15,23,42,.10), inset 0 1px 0 rgba(255,255,255,.92) !important;
+    }
+    .ja-theme-light [style*="#f8fafc"] { color:#0f172a !important; }
+    .ja-theme-light [style*="#cbd5e1"],
+    .ja-theme-light [style*="#d1d5db"] { color:#475569 !important; }
+    .ja-theme-light [style*="#9ca3af"] { color:#64748b !important; }
+    .ja-theme-light [style*="#93c5fd"],
+    .ja-theme-light [style*="#bfdbfe"],
+    .ja-theme-light [style*="#e0f2fe"] { color:#1d4ed8 !important; }
+    .ja-theme-light input,
+    .ja-theme-light textarea {
+      background:#ffffff !important;
+      color:#0f172a !important;
+      border-color:rgba(15,23,42,.14) !important;
+    }
+    .ja-theme-light input::placeholder,
+    .ja-theme-light textarea::placeholder { color:rgba(71,85,105,.58) !important; }
+    .ja-theme-light .ja-dock {
+      background:rgba(255,255,255,.92) !important;
+      border-color:rgba(15,23,42,.12) !important;
+      box-shadow:0 18px 42px rgba(15,23,42,.14), inset 0 1px 0 rgba(255,255,255,.96) !important;
+    }
+    .ja-theme-light .ja-dock::before { opacity:.18; }
+    .ja-theme-light .ja-dock::after { border-top-color:rgba(255,255,255,.82); }
+    .ja-theme-light .ja-nav-button {
+      background:transparent !important;
+      border-color:transparent !important;
+      box-shadow:none !important;
+      color:#475569 !important;
+    }
+    .ja-theme-light .ja-nav-button svg { stroke:#475569 !important; }
+    .ja-theme-light .ja-nav-button span { color:#475569 !important; }
+    .ja-theme-light .ja-nav-button.ja-nav-active {
+      background:#e8f0ff !important;
+      border-color:rgba(37,99,235,.18) !important;
+      box-shadow:0 10px 22px rgba(37,99,235,.12), inset 0 1px 0 rgba(255,255,255,.92) !important;
+      color:#1d4ed8 !important;
+    }
+    .ja-theme-light .ja-nav-button.ja-nav-active svg { stroke:#1d4ed8 !important; }
+    .ja-theme-light .ja-nav-button.ja-nav-active span { color:#1d4ed8 !important; }
+    .ja-theme-light .ja-sos-orb span { color:#ffffff !important; }
+    .ja-settings-list .ja-settings-row:last-child { border-bottom:0 !important; }
+    .ja-theme-light .ja-settings-list {
+      background:#ffffff !important;
+      border-color:rgba(15,23,42,.12) !important;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.92),0 10px 24px rgba(15,23,42,.06) !important;
+    }
+    .ja-theme-light .ja-settings-row {
+      border-bottom-color:rgba(15,23,42,.10) !important;
+      background:transparent !important;
+      box-shadow:none !important;
+    }
+    .ja-theme-light .ja-settings-switch {
+      background:rgba(100,116,139,.22) !important;
+      border-color:rgba(100,116,139,.18) !important;
+    }
+    .ja-theme-light .ja-settings-switch-on {
+      background:#3b82f6 !important;
+      border-color:transparent !important;
+    }
+    .ja-theme-light .ja-settings-switch-knob {
+      background:#ffffff !important;
+      box-shadow:0 4px 12px rgba(15,23,42,.24) !important;
+    }
+"##;
 
 pub(crate) const THEME: ThemeSpec = ThemeSpec {
     app: APP,

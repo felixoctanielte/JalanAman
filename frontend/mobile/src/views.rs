@@ -3,7 +3,7 @@ use jalanaman_shared::{
     DirectionsResponse, EmergencyContact, PlaceSuggestion, Report, RouteScoreResponse,
 };
 
-use crate::app_config::{app_spec, CopyKey, Language, MapPresentation, ReportCategory};
+use crate::app_config::{app_spec, CopyKey, Language, MapPresentation, ReportCategory, ThemeMode};
 use crate::models::GeoPoint;
 use crate::theme::*;
 use crate::utils::{
@@ -570,6 +570,13 @@ pub(crate) fn ProfileView(
     report_count: usize,
     contact_count: usize,
     location_error: Option<String>,
+    voice_enabled: bool,
+    voice_listening: bool,
+    theme_mode: ThemeMode,
+    settings_msg: Option<String>,
+    on_voice_enabled: EventHandler<bool>,
+    on_request_microphone: EventHandler<MouseEvent>,
+    on_theme_mode: EventHandler<ThemeMode>,
 ) -> Element {
     let location_status = if location.is_some() {
         language.text(CopyKey::Active).to_string()
@@ -600,6 +607,41 @@ pub(crate) fn ProfileView(
                 StatusRow { label: language.text(CopyKey::SosAlerts), value: language.text(CopyKey::ReadyToUse).to_string() }
                 if location_error.is_some() {
                     Notice { message: language.text(CopyKey::LocationNotice).to_string(), danger: true }
+                }
+            }
+
+            div { style: CARD,
+                div { style: EYEBROW, "{language.text(CopyKey::SettingsTitle)}" }
+                div {
+                    class: "ja-settings-list",
+                    style: "margin-top:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.12);border-radius:10px;background:rgba(255,255,255,0.05);box-shadow:inset 0 1px 0 rgba(255,255,255,0.10);",
+                    SettingsToggleRow {
+                        title: language.text(CopyKey::AssistanceMode),
+                        body: if voice_enabled { language.text(CopyKey::VoiceAndChat) } else { language.text(CopyKey::ChatOnly) },
+                        active: voice_enabled,
+                        on_toggle: move |_| on_voice_enabled.call(!voice_enabled),
+                    }
+                    SettingsToggleRow {
+                        title: language.text(CopyKey::MicrophoneAccess),
+                        body: if voice_listening { language.text(CopyKey::VoiceListening) } else { language.text(CopyKey::TestVoiceSos) },
+                        active: voice_listening,
+                        on_toggle: move |event| on_request_microphone.call(event),
+                    }
+                    SettingsToggleRow {
+                        title: language.text(CopyKey::Appearance),
+                        body: if theme_mode == ThemeMode::Light { language.text(CopyKey::LightMode) } else { language.text(CopyKey::DarkMode) },
+                        active: theme_mode == ThemeMode::Light,
+                        on_toggle: move |_| {
+                            if theme_mode == ThemeMode::Light {
+                                on_theme_mode.call(ThemeMode::Dark);
+                            } else {
+                                on_theme_mode.call(ThemeMode::Light);
+                            }
+                        },
+                    }
+                }
+                if let Some(message) = settings_msg {
+                    Notice { message, danger: false }
                 }
             }
         }
@@ -747,6 +789,48 @@ fn ContactRow(
                     "×"
                 }
             }
+        }
+    }
+}
+
+#[component]
+fn SettingsToggleRow(
+    title: &'static str,
+    body: &'static str,
+    active: bool,
+    on_toggle: EventHandler<MouseEvent>,
+) -> Element {
+    rsx! {
+        button {
+            style: "width:100%;min-height:72px;border:0;border-bottom:1px solid rgba(255,255,255,0.10);background:transparent;padding:12px 12px;display:flex;align-items:center;justify-content:space-between;gap:14px;text-align:left;",
+            class: "ja-settings-row",
+            onclick: move |event| on_toggle.call(event),
+            div { style: "min-width:0;flex:1;",
+                div { style: "font-size:13px;font-weight:950;color:#f8fafc;line-height:1.25;", "{title}" }
+                div { style: "margin-top:3px;font-size:10px;font-weight:750;color:#cbd5e1;line-height:1.35;", "{body}" }
+            }
+            SettingsSwitch { active }
+        }
+    }
+}
+
+#[component]
+fn SettingsSwitch(active: bool) -> Element {
+    let track = if active {
+        "width:58px;height:34px;position:relative;flex-shrink:0;border:0;border-radius:999px;background:#3b82f6;box-shadow:0 10px 22px rgba(59,130,246,0.28),inset 0 1px 0 rgba(255,255,255,0.24);"
+    } else {
+        "width:58px;height:34px;position:relative;flex-shrink:0;border:1px solid rgba(148,163,184,0.24);border-radius:999px;background:rgba(100,116,139,0.34);box-shadow:inset 0 1px 0 rgba(255,255,255,0.12);"
+    };
+    let knob = if active {
+        "position:absolute;right:3px;top:3px;width:28px;height:28px;border-radius:50%;background:#ffffff;box-shadow:0 4px 12px rgba(15,23,42,0.24);transition:left 180ms ease,right 180ms ease;"
+    } else {
+        "position:absolute;left:3px;top:3px;width:28px;height:28px;border-radius:50%;background:#ffffff;box-shadow:0 4px 12px rgba(15,23,42,0.24);transition:left 180ms ease,right 180ms ease;"
+    };
+
+    rsx! {
+        span { style: track,
+            class: if active { "ja-settings-switch ja-settings-switch-on" } else { "ja-settings-switch" },
+            span { class: "ja-settings-switch-knob", style: knob }
         }
     }
 }

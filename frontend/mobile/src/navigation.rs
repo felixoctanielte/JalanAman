@@ -76,6 +76,7 @@ pub(crate) fn NavButton(
     rsx! {
         button {
             style: if active { NAV_BUTTON_ACTIVE } else { NAV_BUTTON },
+            class: if active { "ja-nav-button ja-nav-active" } else { "ja-nav-button" },
             onclick: move |event| onclick.call(event),
             NavIcon { icon }
             span { "{label}" }

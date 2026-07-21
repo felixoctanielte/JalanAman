@@ -6,11 +6,13 @@ use jalanaman_shared::{
 use serde::Deserialize;
 use std::time::Duration;
 
-use crate::app_config::{app_spec, CopyKey, MapPresentation, MobileTab, ReportCategory};
+use crate::app_config::{
+    app_spec, CopyKey, Language, MapPresentation, MobileTab, ReportCategory, ThemeMode,
+};
 use crate::dashboard::{Dashboard, Fallback};
 use crate::header::Header;
 use crate::map::map_srcdoc;
-use crate::models::{GeoPoint, MapSelectionEval};
+use crate::models::{GeoPoint, MapSelectionEval, VoiceCommandEval};
 use crate::navigation::{BottomNavigation, SosButton};
 use crate::platform::*;
 use crate::screens::*;
@@ -33,11 +35,207 @@ pub fn App() -> Element {
     rsx! { Router::<Route> {} }
 }
 
+#[derive(Clone, Copy)]
+enum SosSource {
+    Button,
+    Voice,
+}
+
+#[allow(clippy::too_many_arguments)]
+fn trigger_sos_flow(
+    source: SosSource,
+    language: Language,
+    mut location: Signal<Option<GeoPoint>>,
+    mut location_error: Signal<Option<String>>,
+    mut manual_lat: Signal<String>,
+    mut manual_lng: Signal<String>,
+    device_hash: Signal<String>,
+    contacts: Signal<Vec<EmergencyContact>>,
+    mut sos_active: Signal<bool>,
+    mut sos_msg: Signal<Option<String>>,
+    mut sos_modal_open: Signal<bool>,
+) {
+    if *sos_active.read() {
+        return;
+    }
+    stop_voice_command();
+
+    let point = *location.read();
+    let hash = device_hash.read().clone();
+    if hash.is_empty() {
+        sos_msg.set(Some(language.text(CopyKey::AppPreparing).to_string()));
+        sos_modal_open.set(true);
+        return;
+    }
+    let whatsapp_contacts = contacts.read().clone();
+
+    let preparing_key = match source {
+        SosSource::Button => CopyKey::PreparingSosLocation,
+        SosSource::Voice => CopyKey::VoiceMatched,
+    };
+    sos_msg.set(Some(language.text(preparing_key).to_string()));
+    sos_modal_open.set(true);
+
+    spawn(async move {
+        let point = match point {
+            Some(point) => point,
+            None => match read_location().await {
+                Ok(point) => {
+                    location.set(Some(point));
+                    manual_lat.set(format!("{:.6}", point.lat));
+                    manual_lng.set(format!("{:.6}", point.lng));
+                    location_error.set(None);
+                    point
+                }
+                Err(err) => {
+                    location_error.set(Some(err));
+                    sos_msg.set(Some(language.text(CopyKey::SosLocationMissing).to_string()));
+                    return;
+                }
+            },
+        };
+
+        if let Err(err) = start_sos_alarm().await {
+            sos_active.set(false);
+            sos_msg.set(Some(err));
+            return;
+        }
+        sos_active.set(true);
+        sos_msg.set(Some(language.text(CopyKey::SosActiveSending).to_string()));
+
+        match trigger_sos(&hash, point).await {
+            Ok(response) => {
+                let whatsapp_opened = open_whatsapp_sos(&whatsapp_contacts, point)
+                    .await
+                    .unwrap_or(false);
+
+                if whatsapp_opened {
+                    sos_msg.set(Some(language.text(CopyKey::WhatsappFallback).to_string()));
+                } else if response.notified_count > 0 {
+                    sos_msg.set(Some(language.text(CopyKey::SosNotified).to_string()));
+                } else {
+                    sos_msg.set(Some(language.text(CopyKey::SosNoChannel).to_string()));
+                }
+            }
+            Err(_) => {
+                let whatsapp_opened = open_whatsapp_sos(&whatsapp_contacts, point)
+                    .await
+                    .unwrap_or(false);
+                if whatsapp_opened {
+                    sos_msg.set(Some(language.text(CopyKey::SosBackendFallback).to_string()));
+                } else {
+                    sos_msg.set(Some(language.text(CopyKey::SosStaySafe).to_string()));
+                }
+            }
+        }
+    });
+}
+
+fn arm_voice_sos(
+    voice_enabled: Signal<bool>,
+    mut voice_listening: Signal<bool>,
+    mut voice_error: Signal<Option<String>>,
+    sos_active: Signal<bool>,
+) {
+    if !*voice_enabled.peek() || *sos_active.peek() || *voice_listening.peek() {
+        return;
+    }
+
+    voice_listening.set(true);
+    voice_error.set(None);
+    spawn(async move {
+        if let Err(err) = start_voice_command().await {
+            voice_listening.set(false);
+            voice_error.set(Some(err));
+        }
+    });
+}
+
+fn start_voice_sos_entry(
+    language: Language,
+    voice_enabled: Signal<bool>,
+    mut voice_listening: Signal<bool>,
+    mut voice_error: Signal<Option<String>>,
+    sos_active: Signal<bool>,
+    mut settings_msg: Signal<Option<String>>,
+    mut sos_msg: Signal<Option<String>>,
+    mut sos_modal_open: Signal<bool>,
+    show_overlay: bool,
+) {
+    if !*voice_enabled.peek() {
+        let message = language.text(CopyKey::VoiceShortcutDisabled).to_string();
+        settings_msg.set(Some(message.clone()));
+        if show_overlay {
+            sos_msg.set(Some(message));
+            sos_modal_open.set(true);
+        }
+        return;
+    }
+
+    settings_msg.set(Some(language.text(CopyKey::VoiceListening).to_string()));
+    if show_overlay {
+        sos_msg.set(Some(language.text(CopyKey::VoiceListening).to_string()));
+        sos_modal_open.set(true);
+    }
+
+    spawn(async move {
+        match request_microphone_permission().await {
+            Ok(()) => {
+                voice_listening.set(false);
+                tokio::time::sleep(Duration::from_millis(250)).await;
+                arm_voice_sos(voice_enabled, voice_listening, voice_error, sos_active);
+            }
+            Err(err) => {
+                voice_listening.set(false);
+                voice_error.set(Some(err.clone()));
+                settings_msg.set(Some(err.clone()));
+                if show_overlay {
+                    sos_msg.set(Some(err));
+                    sos_modal_open.set(true);
+                }
+            }
+        }
+    });
+}
+
+fn stop_sos_flow(
+    language: Language,
+    mut sos_active: Signal<bool>,
+    mut sos_msg: Signal<Option<String>>,
+    mut sos_modal_open: Signal<bool>,
+) {
+    stop_voice_command();
+    stop_sos_alarm();
+    sos_active.set(false);
+    sos_msg.set(Some(language.text(CopyKey::SosStopped).to_string()));
+    sos_modal_open.set(true);
+}
+
+fn is_voice_sos_command(text: &str) -> bool {
+    let normalized = text.to_lowercase();
+    [
+        "jalanaman sos",
+        "jalan aman sos",
+        "aktifkan sos",
+        "nyalakan sos",
+        "sos",
+        "tolong",
+        "bantuan",
+        "minta bantuan",
+        "darurat",
+        "bahaya",
+    ]
+    .iter()
+    .any(|keyword| normalized.contains(keyword))
+}
+
 #[component]
 pub(crate) fn Home() -> Element {
     let mut active_tab = use_signal(|| app_spec().default_tab);
     let mut map_presentation = use_signal(|| MapPresentation::TwoDimensional);
     let mut language = use_signal(|| app_spec().default_language);
+    let mut theme_mode = use_signal(|| ThemeMode::Dark);
+    let mut settings_msg = use_signal(|| Option::<String>::None);
     let mut show_splash = use_signal(|| true);
     let mut device_hash = use_signal(String::new);
     let mut location = use_signal(|| Option::<GeoPoint>::None);
@@ -70,6 +268,10 @@ pub(crate) fn Home() -> Element {
     let mut sos_active = use_signal(|| false);
     let mut sos_msg = use_signal(|| Option::<String>::None);
     let mut sos_modal_open = use_signal(|| false);
+    let mut voice_enabled = use_signal(|| false);
+    let mut voice_listening = use_signal(|| false);
+    let mut voice_last_text = use_signal(|| Option::<String>::None);
+    let mut voice_error = use_signal(|| Option::<String>::None);
     let mut manual_lat = use_signal(String::new);
     let mut manual_lng = use_signal(String::new);
     let mut manual_location_error = use_signal(|| Option::<String>::None);
@@ -77,6 +279,16 @@ pub(crate) fn Home() -> Element {
     use_future(move || async move {
         tokio::time::sleep(Duration::from_millis(1450)).await;
         show_splash.set(false);
+    });
+
+    use_effect(move || {
+        spawn(async move {
+            let saved_theme = read_theme_mode().await;
+            theme_mode.set(saved_theme);
+
+            let saved_voice = read_voice_sos_enabled().await;
+            voice_enabled.set(saved_voice);
+        });
     });
 
     use_future(move || async move {
@@ -111,6 +323,133 @@ pub(crate) fn Home() -> Element {
             }));
             report_error.set(None);
             active_tab.set(MobileTab::Report);
+        }
+    });
+
+    use_future(move || async move {
+        loop {
+            let eval = document::eval(
+                r#"
+                return await new Promise((resolve) => {
+                    const receive = (event) => {
+                        const data = event.data;
+                        if (!data || data.type !== 'jalanaman-voice-command') return;
+                        window.removeEventListener('message', receive);
+                        resolve({
+                            status: data.status || null,
+                            text: data.text || null,
+                            error: data.error || null,
+                        });
+                    };
+                    window.addEventListener('message', receive);
+                });
+                "#,
+            );
+
+            let Ok(value) = eval.await else {
+                continue;
+            };
+            let Ok(command) = VoiceCommandEval::deserialize(&value) else {
+                continue;
+            };
+            let current_language = *language.peek();
+
+            if matches!(command.status.as_deref(), Some("listening")) {
+                voice_listening.set(true);
+                voice_error.set(None);
+                continue;
+            }
+
+            voice_listening.set(false);
+
+            if let Some(err) = command.error.filter(|err| !err.trim().is_empty()) {
+                voice_error.set(Some(err.clone()));
+                if *sos_modal_open.peek() && !*sos_active.peek() {
+                    sos_msg.set(Some(err));
+                }
+                continue;
+            }
+
+            let Some(text) = command.text.filter(|text| !text.trim().is_empty()) else {
+                continue;
+            };
+            voice_last_text.set(Some(text.clone()));
+
+            if is_voice_sos_command(&text) {
+                voice_error.set(None);
+                sos_msg.set(Some(
+                    current_language.text(CopyKey::VoiceMatched).to_string(),
+                ));
+                sos_modal_open.set(true);
+                trigger_sos_flow(
+                    SosSource::Voice,
+                    current_language,
+                    location,
+                    location_error,
+                    manual_lat,
+                    manual_lng,
+                    device_hash,
+                    contacts,
+                    sos_active,
+                    sos_msg,
+                    sos_modal_open,
+                );
+            } else {
+                let message = format!(
+                    "{} ({})",
+                    current_language.text(CopyKey::VoiceNotRecognized),
+                    text
+                );
+                voice_error.set(Some(message));
+                if *sos_modal_open.peek() && !*sos_active.peek() {
+                    sos_msg.set(Some(
+                        current_language
+                            .text(CopyKey::VoiceNotRecognized)
+                            .to_string(),
+                    ));
+                }
+            }
+        }
+    });
+
+    use_future(move || async move {
+        tokio::time::sleep(Duration::from_millis(900)).await;
+        loop {
+            if let Some(action) = consume_launch_action().await {
+                let current_language = *language.peek();
+                match action.as_str() {
+                    "voice_sos" | "voice" | "voice_sos_widget" => {
+                        start_voice_sos_entry(
+                            current_language,
+                            voice_enabled,
+                            voice_listening,
+                            voice_error,
+                            sos_active,
+                            settings_msg,
+                            sos_msg,
+                            sos_modal_open,
+                            true,
+                        );
+                    }
+                    "sos" | "sos_widget" => {
+                        trigger_sos_flow(
+                            SosSource::Button,
+                            current_language,
+                            location,
+                            location_error,
+                            manual_lat,
+                            manual_lng,
+                            device_hash,
+                            contacts,
+                            sos_active,
+                            sos_msg,
+                            sos_modal_open,
+                        );
+                    }
+                    _ => {}
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(700)).await;
         }
     });
 
@@ -209,6 +548,7 @@ pub(crate) fn Home() -> Element {
     let active_tab_value = *active_tab.read();
     let map_presentation_value = *map_presentation.read();
     let language_value = *language.read();
+    let theme_mode_value = *theme_mode.read();
     let location_value = *location.read();
     let report_category_value = *report_category.read();
     let report_note_value = report_note.read().clone();
@@ -236,9 +576,11 @@ pub(crate) fn Home() -> Element {
         false,
     );
     rsx! {
-        main { style: APP,
+        main {
+            style: if theme_mode_value == ThemeMode::Light { APP_LIGHT } else { APP },
+            class: if theme_mode_value == ThemeMode::Light { "ja-theme-light" } else { "ja-theme-dark" },
             style { {MOTION_CSS} }
-            div { style: SCREEN,
+            div { style: if theme_mode_value == ThemeMode::Light { SCREEN_LIGHT } else { SCREEN },
                 Header {
                     language: language_value,
                     on_language: move |next| language.set(next),
@@ -582,6 +924,69 @@ pub(crate) fn Home() -> Element {
                             report_count: reports.read().len(),
                             contact_count: contacts.read().len(),
                             location_error: location_error.read().clone(),
+                            voice_enabled: *voice_enabled.read(),
+                            voice_listening: *voice_listening.read(),
+                            theme_mode: theme_mode_value,
+                            settings_msg: settings_msg.read().clone().or(voice_error.read().clone()),
+                            on_voice_enabled: move |enabled| {
+                                settings_msg.set(None);
+                                voice_enabled.set(enabled);
+                                write_voice_sos_enabled(enabled);
+
+                                if !enabled {
+                                    stop_voice_command();
+                                    voice_listening.set(false);
+                                    voice_error.set(None);
+                                    settings_msg.set(Some(language_value.text(CopyKey::ChatOnly).to_string()));
+                                    return;
+                                }
+
+                                settings_msg.set(Some(language_value.text(CopyKey::MicrophoneRequested).to_string()));
+                                spawn(async move {
+                                    match request_microphone_permission().await {
+                                        Ok(()) => {
+                                            voice_listening.set(false);
+                                            voice_error.set(None);
+                                            settings_msg.set(Some(
+                                                language_value
+                                                    .text(CopyKey::VoiceShortcutReady)
+                                                    .to_string(),
+                                            ));
+                                        }
+                                        Err(err) => {
+                                            voice_enabled.set(false);
+                                            write_voice_sos_enabled(false);
+                                            voice_listening.set(false);
+                                            voice_error.set(Some(err.clone()));
+                                            settings_msg.set(Some(err));
+                                        }
+                                    }
+                                });
+                            },
+                            on_request_microphone: move |_| {
+                                if *voice_listening.read() {
+                                    stop_voice_command();
+                                    voice_listening.set(false);
+                                    settings_msg.set(Some(language_value.text(CopyKey::TestVoiceSos).to_string()));
+                                    return;
+                                }
+
+                                start_voice_sos_entry(
+                                    language_value,
+                                    voice_enabled,
+                                    voice_listening,
+                                    voice_error,
+                                    sos_active,
+                                    settings_msg,
+                                    sos_msg,
+                                    sos_modal_open,
+                                    true,
+                                );
+                            },
+                            on_theme_mode: move |mode| {
+                                theme_mode.set(mode);
+                                write_theme_mode(mode);
+                            },
                         }
                     } else {
                         HelpView { language: language_value }
@@ -595,10 +1000,7 @@ pub(crate) fn Home() -> Element {
                         message: sos_msg.read().clone().unwrap_or_else(|| language_value.text(CopyKey::PreparingHelp).to_string()),
                         on_close: move |_| sos_modal_open.set(false),
                         on_stop: move |_| {
-                            stop_sos_alarm();
-                            sos_active.set(false);
-                            sos_msg.set(Some(language_value.text(CopyKey::SosStopped).to_string()));
-                            sos_modal_open.set(true);
+                            stop_sos_flow(language_value, sos_active, sos_msg, sos_modal_open);
                         },
                     }
                 }
@@ -614,77 +1016,23 @@ pub(crate) fn Home() -> Element {
                     language: language_value,
                     on_click: move |_| {
                         if *sos_active.read() {
-                            stop_sos_alarm();
-                            sos_active.set(false);
-                            sos_msg.set(Some(language_value.text(CopyKey::SosStopped).to_string()));
-                            sos_modal_open.set(true);
+                            stop_sos_flow(language_value, sos_active, sos_msg, sos_modal_open);
                             return;
                         }
 
-                        let point = *location.read();
-                        let hash = device_hash.read().clone();
-                        if hash.is_empty() {
-                            sos_msg.set(Some(language_value.text(CopyKey::AppPreparing).to_string()));
-                            sos_modal_open.set(true);
-                            return;
-                        }
-                        let whatsapp_contacts = contacts.read().clone();
-
-                        sos_msg.set(Some(language_value.text(CopyKey::PreparingSosLocation).to_string()));
-                        sos_modal_open.set(true);
-                        spawn(async move {
-                            let point = match point {
-                                Some(point) => point,
-                                None => match read_location().await {
-                                    Ok(point) => {
-                                        location.set(Some(point));
-                                        manual_lat.set(format!("{:.6}", point.lat));
-                                        manual_lng.set(format!("{:.6}", point.lng));
-                                        location_error.set(None);
-                                        point
-                                    }
-                                    Err(err) => {
-                                        location_error.set(Some(err.clone()));
-                                        sos_msg.set(Some(language_value.text(CopyKey::SosLocationMissing).to_string()));
-                                        return;
-                                    }
-                                },
-                            };
-
-                        if let Err(err) = start_sos_alarm().await {
-                            sos_active.set(false);
-                            sos_msg.set(Some(err));
-                            return;
-                        }
-                        sos_active.set(true);
-                        sos_msg.set(Some(language_value.text(CopyKey::SosActiveSending).to_string()));
-
-                            match trigger_sos(&hash, point).await {
-                                Ok(response) => {
-                                    let whatsapp_opened = open_whatsapp_sos(&whatsapp_contacts, point)
-                                        .await
-                                        .unwrap_or(false);
-
-                                    if whatsapp_opened {
-                                        sos_msg.set(Some(language_value.text(CopyKey::WhatsappFallback).to_string()));
-                                    } else if response.notified_count > 0 {
-                                        sos_msg.set(Some(language_value.text(CopyKey::SosNotified).to_string()));
-                                    } else {
-                                        sos_msg.set(Some(language_value.text(CopyKey::SosNoChannel).to_string()));
-                                    }
-                                }
-                                Err(_) => {
-                                    let whatsapp_opened = open_whatsapp_sos(&whatsapp_contacts, point)
-                                        .await
-                                        .unwrap_or(false);
-                                    if whatsapp_opened {
-                                        sos_msg.set(Some(language_value.text(CopyKey::SosBackendFallback).to_string()));
-                                    } else {
-                                        sos_msg.set(Some(language_value.text(CopyKey::SosStaySafe).to_string()));
-                                    }
-                                }
-                            }
-                        });
+                        trigger_sos_flow(
+                            SosSource::Button,
+                            language_value,
+                            location,
+                            location_error,
+                            manual_lat,
+                            manual_lng,
+                            device_hash,
+                            contacts,
+                            sos_active,
+                            sos_msg,
+                            sos_modal_open,
+                        );
                     },
                 }
 

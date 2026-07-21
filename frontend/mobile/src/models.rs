@@ -18,3 +18,15 @@ pub(crate) struct MapSelectionEval {
     pub(crate) lat: f64,
     pub(crate) lng: f64,
 }
+
+#[derive(Clone, Debug, Deserialize)]
+pub(crate) struct VoiceCommandEval {
+    pub(crate) status: Option<String>,
+    pub(crate) text: Option<String>,
+    pub(crate) error: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub(crate) struct LaunchActionEval {
+    pub(crate) action: Option<String>,
+}
